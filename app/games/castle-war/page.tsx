@@ -10,10 +10,8 @@ import {
   Crown,
   Bomb,
   CheckCircle2,
-  ChevronRight,
-  Swords,
-  Dices,
   Crosshair,
+  Swords,
   Zap,
   Volume2,
   VolumeX,
@@ -21,14 +19,10 @@ import {
   Eye,
   Lock,
   Skull,
-  X,
-  BookOpen,
   Clock,
   RefreshCw,
   Search,
   Ban,
-  QrCode,
-  Users,
   Copy,
   MonitorPlay,
   ArrowRight,
@@ -36,8 +30,6 @@ import {
   Moon,
   Home,
   Info,
-  Gamepad2,
-  MessageCircle,
 } from "lucide-react";
 
 const cairo = Cairo({ subsets: ["arabic"], weight: ["400", "700", "900"] });
@@ -45,22 +37,28 @@ const cairo = Cairo({ subsets: ["arabic"], weight: ["400", "700", "900"] });
 const TOTAL_SOLDIERS = 120;
 const ROOMS_COUNT = 15;
 
-const INITIAL_POSITIONS = [
-  { id: 0, left: "20.0%", top: "30.0%" },
-  { id: 1, left: "50.0%", top: "20.0%" },
-  { id: 2, left: "80.0%", top: "30.0%" },
-  { id: 3, left: "28.0%", top: "48.0%" },
-  { id: 4, left: "42.0%", top: "45.0%" },
-  { id: 5, left: "58.0%", top: "45.0%" },
-  { id: 6, left: "72.0%", top: "48.0%" },
-  { id: 7, left: "15.0%", top: "65.0%" },
-  { id: 8, left: "32.0%", top: "65.0%" },
-  { id: 9, left: "50.0%", top: "55.0%" },
-  { id: 10, left: "68.0%", top: "65.0%" },
-  { id: 11, left: "85.0%", top: "65.0%" },
-  { id: 12, left: "38.0%", top: "80.0%" },
-  { id: 13, left: "50.0%", top: "85.0%" },
-  { id: 14, left: "62.0%", top: "80.0%" },
+// غرف القلعة التفاعلية المدمجة (15 غرفة)
+const SVG_ROOMS = [
+  // البرج الأيسر (5 غرف)
+  { id: 0, cx: 250, cy: 300 },
+  { id: 1, cx: 250, cy: 420 },
+  { id: 2, cx: 250, cy: 540 },
+  { id: 3, cx: 170, cy: 660 },
+  { id: 4, cx: 330, cy: 660 },
+
+  // البرج الأوسط (5 غرف)
+  { id: 5, cx: 600, cy: 150 },
+  { id: 6, cx: 480, cy: 300 },
+  { id: 7, cx: 720, cy: 300 },
+  { id: 8, cx: 480, cy: 460 },
+  { id: 9, cx: 720, cy: 460 },
+
+  // البرج الأيمن (5 غرف)
+  { id: 10, cx: 950, cy: 300 },
+  { id: 11, cx: 950, cy: 420 },
+  { id: 12, cx: 950, cy: 540 },
+  { id: 13, cx: 870, cy: 660 },
+  { id: 14, cx: 1030, cy: 660 },
 ];
 
 type TeamSetup = {
@@ -210,6 +208,7 @@ const createSoundSynth = () => {
     const gainNode = ctx.createGain();
     osc.connect(gainNode);
     gainNode.connect(ctx.destination);
+
     if (type === "roll") {
       osc.type = "sine";
       osc.frequency.setValueAtTime(800, now);
@@ -306,8 +305,6 @@ export default function CastleBattleMainScreen() {
   const [team1Data, setTeam1Data] = useState<TeamSetup | null>(null);
   const [team2Data, setTeam2Data] = useState<TeamSetup | null>(null);
 
-  const [castle1Img, setCastle1Img] = useState("/castle.png");
-  const [castle2Img, setCastle2Img] = useState("/castle.png");
   const [turn, setTurn] = useState<1 | 2>(1);
   const [attackingTeam, setAttackingTeam] = useState<1 | 2>(1);
   const [hp1, setHp1] = useState(TOTAL_SOLDIERS);
@@ -331,7 +328,6 @@ export default function CastleBattleMainScreen() {
 
   const [activeChallengeType, setActiveChallengeType] =
     useState<ChallengeType>("");
-
   const [activeChallengeName, setActiveChallengeName] = useState("");
   const [activeChallengeData, setActiveChallengeData] = useState<any>(null);
   const [isChallengeRevealed, setIsChallengeRevealed] = useState(false);
@@ -358,16 +354,12 @@ export default function CastleBattleMainScreen() {
   >(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  const [roomPositions, setRoomPositions] = useState(INITIAL_POSITIONS);
   const synthRef = useRef<{
     playMasterSound: (type: SoundType) => void;
   } | null>(null);
-
   const [isDarkMode, setIsDarkMode] = useState(true);
-
   const [usedChallengesT1, setUsedChallengesT1] = useState<ChallengeType[]>([]);
   const [usedChallengesT2, setUsedChallengesT2] = useState<ChallengeType[]>([]);
-
   const [targetRoomIndex, setTargetRoomIndex] = useState<number | null>(null);
   const [isAttacking, setIsAttacking] = useState(false);
 
@@ -423,7 +415,6 @@ export default function CastleBattleMainScreen() {
       usedChallengesT1,
       usedChallengesT2,
       timerStarted,
-      roomPositions,
       timestamp: Date.now(),
     };
 
@@ -458,12 +449,10 @@ export default function CastleBattleMainScreen() {
     usedChallengesT1,
     usedChallengesT2,
     timerStarted,
-    roomPositions,
   ]);
 
   useEffect(() => {
     synthRef.current = createSoundSynth();
-
     const initGame = async () => {
       const newRoomCode = generateAlphanumericCode(5);
       setRoomCode(newRoomCode);
@@ -476,13 +465,6 @@ export default function CastleBattleMainScreen() {
         .from("cw_rooms")
         .upsert({ room_code: newRoomCode, live_sync: {} });
 
-      const savedPositions = localStorage.getItem("castleRoomPositions");
-      if (savedPositions) {
-        try {
-          setRoomPositions(JSON.parse(savedPositions));
-        } catch (e) {}
-      }
-
       const { data } = await supabase.from("cw_settings").select("*");
       if (data) {
         data.forEach((item) => {
@@ -490,8 +472,6 @@ export default function CastleBattleMainScreen() {
           if (item.id === "admin_cw_5sec_db") setCw5SecDB(item.data);
           if (item.id === "admin_cw_team_db") setCwTeamDB(item.data);
           if (item.id === "admin_cw_general_db") setCwGenDB(item.data);
-          if (item.id === "admin_cw_castle1_img") setCastle1Img(item.data);
-          if (item.id === "admin_cw_castle2_img") setCastle2Img(item.data);
         });
       }
     };
@@ -500,7 +480,6 @@ export default function CastleBattleMainScreen() {
 
   useEffect(() => {
     if (!roomCode) return;
-
     const fetchInitialTeams = async () => {
       const { data } = await supabase
         .from("cw_rooms")
@@ -645,15 +624,11 @@ export default function CastleBattleMainScreen() {
       "general",
       "team",
     ];
-
     let currentUsed =
       turn === 1 ? [...usedChallengesT1] : [...usedChallengesT2];
     currentUsed.push(targetType);
 
-    if (currentUsed.length >= allAvailableTypes.length) {
-      currentUsed = [];
-    }
-
+    if (currentUsed.length >= allAvailableTypes.length) currentUsed = [];
     if (turn === 1) setUsedChallengesT1(currentUsed);
     else setUsedChallengesT2(currentUsed);
 
@@ -666,7 +641,6 @@ export default function CastleBattleMainScreen() {
     setIsGenTimerRunning(false);
     setAttackingTeam(turn);
     setTimerStarted(false);
-
     setActiveChallengeType(targetType);
     setActiveChallengeName(getChallengeTitle(targetType));
 
@@ -755,6 +729,7 @@ export default function CastleBattleMainScreen() {
     else setAttackingTeam(turn);
     setBattleStep("target");
   };
+
   const challengeFail = () => {
     setIsGenTimerRunning(false);
     setAttackingTeam(turn === 1 ? 2 : 1);
@@ -784,7 +759,6 @@ export default function CastleBattleMainScreen() {
 
     if (targetRoom !== -1) {
       setTargetRoomIndex(targetRoom);
-
       setTimeout(() => {
         setTargetRoomIndex(null);
         let currentHp1 = hp1;
@@ -854,12 +828,10 @@ export default function CastleBattleMainScreen() {
   const executeAttack = (roomIndex: number, event: React.MouseEvent) => {
     if (isAttacking) return;
     setIsAttacking(true);
-
     setTargetRoomIndex(roomIndex);
 
     setTimeout(() => {
       setTargetRoomIndex(null);
-
       const isTeam1Attacking = attackingTeam === 1;
       const defenderData = isTeam1Attacking ? team2Data! : team1Data!;
       const setDefenderRevealed = isTeam1Attacking
@@ -867,6 +839,7 @@ export default function CastleBattleMainScreen() {
         : setRevealed1;
       let currentHp1 = hp1;
       let currentHp2 = hp2;
+
       setDefenderRevealed((prev) => {
         const next = [...prev];
         next[roomIndex] = true;
@@ -994,145 +967,384 @@ export default function CastleBattleMainScreen() {
     setResultType("idle");
   };
 
-  const handleDropRoom = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const draggedId = e.dataTransfer.getData("roomId");
-    if (!draggedId) return;
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-    const updatedPositions = roomPositions.map((pos) =>
-      pos.id.toString() === draggedId
-        ? { ...pos, left: `${x.toFixed(1)}%`, top: `${y.toFixed(1)}%` }
-        : pos,
-    );
-
-    setRoomPositions(updatedPositions);
-    localStorage.setItem(
-      "castleRoomPositions",
-      JSON.stringify(updatedPositions),
-    );
-  };
-
+  // دالة عرض القلعة التفاعلية SVG المدمجة
   const renderInteractiveCastle = (isTeam1Castle: boolean = true) => {
     const revealed = isTeam1Castle ? revealed1 : revealed2;
     const teamData = isTeam1Castle ? team1Data : team2Data;
     const isSpiedTarget = isTeam1Castle ? spiedTarget2 : spiedTarget1;
-    const teamColorClass = isTeam1Castle
-      ? "text-cyan-600 dark:text-cyan-400"
-      : "text-rose-600 dark:text-rose-400";
+    const teamColorClass = isTeam1Castle ? "text-cyan-400" : "text-rose-400";
 
     return (
       <div
-        onDragOver={(e) => {
-          if (gameState === "lobby") e.preventDefault();
-        }}
-        onDrop={(e) => {
-          if (gameState === "lobby") handleDropRoom(e);
-        }}
-        className={`relative inline-block w-full rounded-3xl overflow-hidden border-4 bg-white dark:bg-slate-800 border-slate-900 dark:border-black shadow-[8px_8px_0px_#0f172a] dark:shadow-[8px_8px_0px_#000] transition-colors duration-500`}
+        className={`relative inline-block w-full rounded-[2rem] overflow-hidden border-4 bg-[#050b14] border-slate-900 dark:border-black shadow-[8px_8px_0px_#0f172a] dark:shadow-[8px_8px_0px_#000] transition-colors duration-500`}
       >
-        <img
-          src={isTeam1Castle ? castle1Img : castle2Img}
-          alt="Castle"
-          className={`w-full h-auto block select-none ${gameState === "lobby" ? "pointer-events-auto" : "pointer-events-none"}`}
-        />
+        <svg
+          viewBox="0 -120 1200 1120"
+          className="w-full h-auto drop-shadow-[0_30px_60px_rgba(0,0,0,0.8)] select-none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <linearGradient id="tower3D" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#0f172a" />
+              <stop offset="20%" stopColor="#1e293b" />
+              <stop offset="50%" stopColor="#334155" />
+              <stop offset="80%" stopColor="#1e293b" />
+              <stop offset="100%" stopColor="#020617" />
+            </linearGradient>
+            <linearGradient id="roofGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#78350f" />
+              <stop offset="30%" stopColor="#b45309" />
+              <stop offset="70%" stopColor="#d97706" />
+              <stop offset="100%" stopColor="#451a03" />
+            </linearGradient>
 
-        {roomPositions.map((pos) => {
-          const isRevealedRoom = revealed[pos.id];
-          const canBeAttacked =
-            gameState === "playing" &&
-            attackingTeam === (isTeam1Castle ? 2 : 1) &&
-            battleStep === "target" &&
-            !isRevealedRoom;
-          const isDamagedRoom =
-            isRevealedRoom &&
-            teamData &&
-            (teamData.rooms[pos.id] > 0 ||
-              teamData.commanderRoom === pos.id ||
-              teamData.trapRoom === pos.id);
-          const isDestroyedTrap =
-            isRevealedRoom && teamData && teamData.trapRoom === pos.id;
-          const isSpied = isSpiedTarget === pos.id;
+            {/* ألوان الفريقين لإضاءة النوافذ */}
+            <linearGradient id="team1Glow" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#22d3ee" />
+              <stop offset="100%" stopColor="#0891b2" />
+            </linearGradient>
+            <linearGradient id="team2Glow" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#fb7185" />
+              <stop offset="100%" stopColor="#e11d48" />
+            </linearGradient>
 
-          const isTargetedNow = targetRoomIndex === pos.id && canBeAttacked;
-
-          return (
-            <div
-              key={pos.id}
-              draggable={gameState === "lobby"}
-              onDragStart={(e) =>
-                e.dataTransfer.setData("roomId", pos.id.toString())
-              }
-              className={`absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center select-none z-10 
-                ${gameState === "lobby" ? "cursor-move hover:scale-110 ring-4 ring-transparent hover:ring-black/50 dark:hover:ring-white/50 rounded-full transition-all" : ""} 
-                ${canBeAttacked && !isSpied ? "cursor-crosshair hover:scale-110 transition-transform" : gameState !== "lobby" ? "cursor-default" : ""}
-              `}
-              style={{ left: pos.left, top: pos.top }}
-              onClick={(e) => {
-                if (canBeAttacked && gameState === "playing")
-                  executeAttack(pos.id, e);
-              }}
+            <radialGradient id="bgAura" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="rgba(56, 189, 248, 0.15)" />
+              <stop offset="50%" stopColor="rgba(129, 140, 248, 0.05)" />
+              <stop offset="100%" stopColor="rgba(0, 0, 0, 0)" />
+            </radialGradient>
+            <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="12" result="blur1" />
+              <feGaussianBlur stdDeviation="24" result="blur2" />
+              <feMerge>
+                <feMergeNode in="blur2" />
+                <feMergeNode in="blur1" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter
+              id="deepShadow"
+              x="-20%"
+              y="-20%"
+              width="140%"
+              height="140%"
             >
-              <div className="flex items-center justify-center relative pointer-events-none">
-                {isSpied && !isRevealedRoom && (
-                  <Eye
-                    className="absolute -top-6 text-yellow-500 animate-bounce drop-shadow-[0_2px_0_#000] z-40 w-6 h-6 md:w-8 md:h-8"
-                    strokeWidth={3}
-                  />
-                )}
-                {isRevealedRoom ? (
-                  isDamagedRoom ? (
-                    isDestroyedTrap ? (
-                      <Bomb
-                        className="text-purple-600 animate-wiggle drop-shadow-[0_2px_0_#000] z-40 w-8 h-8 md:w-10 md:h-10"
-                        strokeWidth={2.5}
-                      />
-                    ) : (
-                      <Skull
-                        className="text-rose-500 drop-shadow-[0_2px_0_#000] animate-pulse z-40 w-8 h-8 md:w-10 md:h-10"
-                        strokeWidth={2.5}
-                      />
-                    )
-                  ) : (
-                    <Shield
-                      className="text-emerald-500 drop-shadow-[0_2px_0_#000] z-40 w-8 h-8 md:w-10 md:h-10"
-                      fill="none"
-                      strokeWidth={3}
-                    />
-                  )
-                ) : (
-                  <span
-                    className={`font-black z-30 drop-shadow-[2px_2px_0_rgba(255,255,255,0.8)] dark:drop-shadow-[2px_2px_0_rgba(0,0,0,0.8)] transition-transform duration-300 ${canBeAttacked ? `text-2xl md:text-3xl ${teamColorClass} scale-110 animate-pulse` : `text-xl md:text-2xl ${teamColorClass} opacity-90`}`}
-                  >
-                    {pos.id + 1}
-                  </span>
-                )}
-                {canBeAttacked && !isSpied && !isTargetedNow && (
-                  <Crosshair
-                    className={`absolute animate-spin-slow opacity-90 z-10 w-10 h-10 md:w-12 md:h-12 drop-shadow-[0_2px_0_#fff] dark:drop-shadow-[0_2px_0_#000] ${isTeam1Castle ? "text-cyan-500" : "text-rose-500"}`}
-                    strokeWidth={2.5}
-                  />
-                )}
-                {canBeAttacked && isSpied && !isTargetedNow && (
-                  <Crosshair
-                    className="absolute text-yellow-500 drop-shadow-[0_2px_0_#000] animate-spin-slow opacity-90 z-10 w-10 h-10 md:w-12 md:h-12"
-                    strokeWidth={3}
-                  />
-                )}
+              <feDropShadow
+                dx="0"
+                dy="15"
+                stdDeviation="10"
+                floodColor="#000000"
+                floodOpacity="0.8"
+              />
+            </filter>
+          </defs>
 
-                {isTargetedNow && (
-                  <Crosshair
-                    className="absolute text-rose-500 drop-shadow-[0_2px_0_#fff] dark:drop-shadow-[0_2px_0_#000] animate-ping z-50 w-12 h-12 md:w-16 md:h-16"
-                    strokeWidth={3}
-                  />
-                )}
-              </div>
-            </div>
-          );
-        })}
+          {/* هالة الخلفية */}
+          <circle cx="600" cy="500" r="500" fill="url(#bgAura)" />
+          <circle
+            cx="600"
+            cy="350"
+            r="250"
+            fill="#1e1b4b"
+            opacity="0.3"
+            filter="url(#neonGlow)"
+          />
+
+          {/* الصورة المدمجة من مجلد public */}
+          <image
+            href="/castle-bg.png"
+            x="0"
+            y="-120"
+            width="1200"
+            height="1120"
+            preserveAspectRatio="xMidYMid slice"
+          />
+
+          {/* هيكل القلعة الأساسي */}
+          <path
+            d="M 250 800 L 250 500 L 950 500 L 950 800 Z"
+            fill="url(#tower3D)"
+            filter="url(#deepShadow)"
+          />
+          <path
+            d="M 250 500 L 250 450 L 300 450 L 300 500 L 350 500 L 350 450 L 400 450 L 400 500 L 450 500 L 450 450 L 500 450 L 500 500 L 550 500 L 550 450 L 600 450 L 600 500 L 650 500 L 650 450 L 700 450 L 700 500 L 750 500 L 750 450 L 800 450 L 800 500 L 850 500 L 850 450 L 900 450 L 900 500 L 950 500 Z"
+            fill="url(#tower3D)"
+          />
+
+          {/* البرج الأيسر */}
+          <rect
+            x="120"
+            y="200"
+            width="260"
+            height="600"
+            rx="10"
+            fill="url(#tower3D)"
+            filter="url(#deepShadow)"
+          />
+          <path
+            d="M 100 800 L 120 700 L 380 700 L 400 800 Z"
+            fill="url(#tower3D)"
+          />
+          <path
+            d="M 100 200 L 250 20 L 400 200 Z"
+            fill="url(#roofGradient)"
+            filter="url(#deepShadow)"
+          />
+          <path d="M 90 200 L 410 200 L 410 220 L 90 220 Z" fill="#b45309" />
+
+          {/* البرج الأيمن */}
+          <rect
+            x="820"
+            y="200"
+            width="260"
+            height="600"
+            rx="10"
+            fill="url(#tower3D)"
+            filter="url(#deepShadow)"
+          />
+          <path
+            d="M 800 800 L 820 700 L 1080 700 L 1100 800 Z"
+            fill="url(#tower3D)"
+          />
+          <path
+            d="M 800 200 L 950 20 L 1100 200 Z"
+            fill="url(#roofGradient)"
+            filter="url(#deepShadow)"
+          />
+          <path
+            d="M 790 200 L 1110 200 L 1110 220 L 790 220 Z"
+            fill="#b45309"
+          />
+
+          {/* البرج الأوسط */}
+          <rect
+            x="420"
+            y="80"
+            width="360"
+            height="720"
+            rx="15"
+            fill="url(#tower3D)"
+            filter="url(#deepShadow)"
+          />
+          <path
+            d="M 390 80 L 600 -80 L 810 80 Z"
+            fill="url(#roofGradient)"
+            filter="url(#deepShadow)"
+          />
+          <path d="M 380 80 L 820 80 L 820 110 L 380 110 Z" fill="#f59e0b" />
+
+          {/* البوابة */}
+          <path
+            d="M 480 800 L 480 620 A 120 120 0 0 1 720 620 L 720 800 Z"
+            fill="#020617"
+            stroke={isTeam1Castle ? "#0891b2" : "#e11d48"}
+            strokeWidth="8"
+            filter="url(#neonGlow)"
+          />
+          <path
+            d="M 540 800 L 540 620 A 60 60 0 0 1 660 620 L 660 800"
+            fill="none"
+            stroke={isTeam1Castle ? "#22d3ee" : "#fb7185"}
+            strokeWidth="4"
+            opacity="0.6"
+          />
+          <circle
+            cx="600"
+            cy="710"
+            r="30"
+            fill={isTeam1Castle ? "url(#team1Glow)" : "url(#team2Glow)"}
+            filter="url(#neonGlow)"
+          />
+          <circle cx="600" cy="710" r="15" fill="#ffffff" />
+
+          {/* القاعدة المستطيلة الجديدة */}
+          <rect
+            x="80"
+            y="800"
+            width="1040"
+            height="40"
+            rx="5"
+            fill="#0f172a"
+            filter="url(#deepShadow)"
+          />
+          <rect
+            x="40"
+            y="840"
+            width="1120"
+            height="60"
+            rx="10"
+            fill="#020617"
+            filter="url(#deepShadow)"
+          />
+
+          {/* --- الرسومات التجميلية للقلعة (سيوف وجماجم فقط) --- */}
+
+          {/* سيوف متقاطعة فوق البوابة */}
+          <foreignObject x="560" y="520" width="80" height="80">
+            <Swords className="text-slate-500 w-full h-full opacity-60" />
+          </foreignObject>
+
+          {/* جماجم عند المداخل */}
+          <foreignObject x="420" y="740" width="40" height="40">
+            <Skull className="text-slate-500 w-full h-full opacity-60" />
+          </foreignObject>
+          <foreignObject x="740" y="740" width="40" height="40">
+            <Skull className="text-slate-500 w-full h-full opacity-60" />
+          </foreignObject>
+
+          {/* رسم الغرف التفاعلية بالنوافذ القوسية */}
+          {SVG_ROOMS.map((room) => {
+            const isRevealedRoom = revealed[room.id];
+            const canBeAttacked =
+              gameState === "playing" &&
+              attackingTeam === (isTeam1Castle ? 2 : 1) &&
+              battleStep === "target" &&
+              !isRevealedRoom;
+            const isDamagedRoom =
+              isRevealedRoom &&
+              teamData &&
+              (teamData.rooms[room.id] > 0 ||
+                teamData.commanderRoom === room.id ||
+                teamData.trapRoom === room.id);
+            const isDestroyedTrap =
+              isRevealedRoom && teamData && teamData.trapRoom === room.id;
+            const hitCommander =
+              isRevealedRoom && teamData && teamData.commanderRoom === room.id;
+            const isSpied = isSpiedTarget === room.id;
+            const isTargetedNow = targetRoomIndex === room.id && canBeAttacked;
+
+            const glowColor = isTeam1Castle
+              ? "url(#team1Glow)"
+              : "url(#team2Glow)";
+            const strokeColor = isTeam1Castle
+              ? "stroke-cyan-500"
+              : "stroke-rose-500";
+            const hoverStroke = isTeam1Castle
+              ? "group-hover:stroke-cyan-300"
+              : "group-hover:stroke-rose-300";
+
+            return (
+              <g
+                key={room.id}
+                onClick={(e) => {
+                  if (canBeAttacked && gameState === "playing")
+                    executeAttack(room.id, e);
+                }}
+                className={`transition-transform duration-200 ease-out will-change-transform group ${canBeAttacked && !isSpied ? "cursor-crosshair hover:scale-[1.12]" : gameState !== "lobby" ? "cursor-default" : ""}`}
+                style={{ transformOrigin: `${room.cx}px ${room.cy}px` }}
+              >
+                {/* الإطار الخارجي المقوس */}
+                <path
+                  d={`M ${room.cx - 35} ${room.cy + 45} L ${room.cx + 35} ${room.cy + 45} L ${room.cx + 35} ${room.cy - 10} A 35 35 0 0 0 ${room.cx - 35} ${room.cy - 10} Z`}
+                  className={`fill-[#0f172a] stroke-[3px] transition-colors duration-200 ${canBeAttacked ? `${strokeColor} ${hoverStroke}` : "stroke-[#1e293b]"}`}
+                  filter="url(#deepShadow)"
+                />
+
+                {/* النواة المضيئة المقوسة */}
+                <path
+                  d={`M ${room.cx - 25} ${room.cy + 35} L ${room.cx + 25} ${room.cy + 35} L ${room.cx + 25} ${room.cy - 5} A 25 25 0 0 0 ${room.cx - 25} ${room.cy - 5} Z`}
+                  fill={isRevealedRoom ? "#020617" : glowColor}
+                  className={
+                    canBeAttacked
+                      ? "group-hover:brightness-125 transition-all duration-200"
+                      : ""
+                  }
+                  filter={!isRevealedRoom ? "url(#neonGlow)" : ""}
+                />
+
+                {/* شبك النوافذ */}
+                <line
+                  x1={room.cx - 25}
+                  y1={room.cy + 15}
+                  x2={room.cx + 25}
+                  y2={room.cy + 15}
+                  stroke="#020617"
+                  strokeWidth="3"
+                  opacity="0.7"
+                />
+                <line
+                  x1={room.cx}
+                  y1={room.cy - 30}
+                  x2={room.cx}
+                  y2={room.cy + 35}
+                  stroke="#020617"
+                  strokeWidth="3"
+                  opacity="0.7"
+                />
+
+                {/* الحاوية HTML المدمجة لعرض الأيقونات والأرقام */}
+                <foreignObject
+                  x={room.cx - 60}
+                  y={room.cy - 60}
+                  width="120"
+                  height="120"
+                  className="pointer-events-none"
+                >
+                  <div className="w-full h-full flex flex-col items-center justify-center relative overflow-visible">
+                    {isSpied && !isRevealedRoom && (
+                      <Eye
+                        className="absolute -top-6 text-yellow-500 animate-bounce drop-shadow-[0_2px_0_#000] z-40 w-10 h-10"
+                        strokeWidth={3}
+                      />
+                    )}
+
+                    {isRevealedRoom ? (
+                      isDamagedRoom ? (
+                        hitCommander ? (
+                          <Crown
+                            className="text-amber-500 drop-shadow-[0_2px_0_#000] z-40 w-12 h-12 animate-pulse"
+                            strokeWidth={2.5}
+                          />
+                        ) : isDestroyedTrap ? (
+                          <Bomb
+                            className="text-purple-600 animate-wiggle drop-shadow-[0_2px_0_#000] z-40 w-12 h-12"
+                            strokeWidth={2.5}
+                          />
+                        ) : (
+                          <Skull
+                            className="text-rose-500 drop-shadow-[0_2px_0_#000] animate-pulse z-40 w-12 h-12"
+                            strokeWidth={2.5}
+                          />
+                        )
+                      ) : (
+                        <Shield
+                          className="text-emerald-500 drop-shadow-[0_2px_0_#000] z-40 w-12 h-12"
+                          fill="none"
+                          strokeWidth={3}
+                        />
+                      )
+                    ) : (
+                      <span
+                        className={`font-black z-30 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] transition-transform duration-300 ${canBeAttacked ? `text-4xl text-white scale-110 animate-pulse` : `text-3xl text-white opacity-90`}`}
+                      >
+                        {room.id + 1}
+                      </span>
+                    )}
+
+                    {canBeAttacked && !isSpied && !isTargetedNow && (
+                      <Crosshair
+                        className={`absolute animate-spin-slow opacity-90 z-10 w-14 h-14 drop-shadow-[0_2px_0_#000] text-white`}
+                        strokeWidth={2.5}
+                      />
+                    )}
+                    {canBeAttacked && isSpied && !isTargetedNow && (
+                      <Crosshair
+                        className="absolute text-yellow-500 drop-shadow-[0_2px_0_#000] animate-spin-slow opacity-90 z-10 w-14 h-14"
+                        strokeWidth={3}
+                      />
+                    )}
+                    {isTargetedNow && (
+                      <Crosshair
+                        className="absolute text-rose-500 drop-shadow-[0_2px_0_#000] animate-ping z-50 w-20 h-20"
+                        strokeWidth={3}
+                      />
+                    )}
+                  </div>
+                </foreignObject>
+              </g>
+            );
+          })}
+        </svg>
       </div>
     );
   };
@@ -1148,12 +1360,7 @@ export default function CastleBattleMainScreen() {
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        @keyframes explosion { 0% { transform: translate(-50%, -50%) scale(0); opacity: 1; } 50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.8; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; } } .animate-explosion { animation: explosion 0.6s ease-out forwards; } 
         @keyframes screenShake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); } 20%, 40%, 60%, 80% { transform: translateX(4px); } } .animate-screen-shake { animation: screenShake 0.4s ease-in-out; }
-        @keyframes customSwing { 0% { transform: rotate(8deg); } 50% { transform: rotate(-8deg); } 100% { transform: rotate(8deg); } }
-        @keyframes softJump { 0% { transform: translateY(0); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0); } }
-        .animate-swing { animation: customSwing 4s ease-in-out infinite; }
-        .animate-soft-jump { animation: softJump 1.5s ease-in-out infinite; }
       `,
         }}
       />
@@ -1263,7 +1470,7 @@ export default function CastleBattleMainScreen() {
                 <span className="text-sm text-slate-500 font-bold">جندي</span>
               </div>
             </div>
-            <div className="flex-1 w-full max-w-[500px] mx-auto mt-2">
+            <div className="flex-1 w-full max-w-[600px] mx-auto mt-2">
               {renderInteractiveCastle(true)}
             </div>
           </div>
@@ -1278,10 +1485,7 @@ export default function CastleBattleMainScreen() {
                   غرفة تجهيز الجيوش
                 </h1>
                 <p className="text-slate-500 dark:text-slate-400 font-bold mb-6 text-sm leading-relaxed border-b-4 border-slate-100 dark:border-slate-700 pb-4">
-                  أدخل الكود في جوالك لتوزيع جنودك بسرية تامة. <br />
-                  <span className="text-amber-500 font-black text-xs bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded-md mt-2 inline-block border-2 border-amber-200 dark:border-amber-700/50">
-                    ملاحظة للحكم: يمكنك سحب أرقام الغرف لوزنها على نوافذ القلعة
-                  </span>
+                  أدخل الكود في جوالك لتوزيع جنودك بسرية تامة.
                 </p>
 
                 <div className="flex flex-col items-center justify-center gap-4 mb-6">
@@ -1408,10 +1612,8 @@ export default function CastleBattleMainScreen() {
                         "general",
                         "team",
                       ];
-
                       let currentTeamUsed =
                         turn === 1 ? usedChallengesT1 : usedChallengesT2;
-
                       const teamColorBg =
                         turn === 1
                           ? "bg-cyan-500 hover:bg-cyan-400"
@@ -1441,12 +1643,7 @@ export default function CastleBattleMainScreen() {
                                     }
                                   }}
                                   disabled={isUsed}
-                                  className={`py-4 rounded-2xl font-black text-lg border-4 transition-all shadow-[4px_4px_0px_#0f172a] dark:shadow-[4px_4px_0px_#000]
-                                    ${
-                                      isUsed
-                                        ? "bg-slate-200 dark:bg-slate-800 text-slate-400 border-slate-300 dark:border-slate-700 opacity-50 cursor-not-allowed"
-                                        : `${teamColorBg} text-white border-slate-900 dark:border-black border-b-8 active:border-b-4 active:translate-y-1`
-                                    }`}
+                                  className={`py-4 rounded-2xl font-black text-lg border-4 transition-all shadow-[4px_4px_0px_#0f172a] dark:shadow-[4px_4px_0px_#000] ${isUsed ? "bg-slate-200 dark:bg-slate-800 text-slate-400 border-slate-300 dark:border-slate-700 opacity-50 cursor-not-allowed" : `${teamColorBg} text-white border-slate-900 dark:border-black border-b-8 active:border-b-4 active:translate-y-1`}`}
                                 >
                                   {getChallengeTitle(cType)}
                                 </button>
@@ -1498,7 +1695,6 @@ export default function CastleBattleMainScreen() {
                                   : "الموضوع: "}{" "}
                                 {activeChallengeData?.q || activeChallengeData}
                               </h3>
-
                               <div className="flex flex-col gap-3 w-full">
                                 {!isGenTimerRunning &&
                                 genTimer ===
@@ -1908,30 +2104,14 @@ export default function CastleBattleMainScreen() {
                           />
                         )}
                       </div>
-
                       <h3
-                        className={`text-2xl md:text-3xl font-black mb-8 px-4 leading-relaxed py-4 rounded-2xl border-4 w-full shadow-inner ${
-                          resultType === "spy"
-                            ? "bg-yellow-300 border-yellow-500 text-slate-900"
-                            : resultType === "hit"
-                              ? "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-emerald-600 dark:text-emerald-400"
-                              : resultType === "trap"
-                                ? "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-purple-700 dark:text-purple-400"
-                                : resultType === "commander"
-                                  ? "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-amber-600 dark:text-amber-400"
-                                  : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-800 dark:text-white"
-                        }`}
+                        className={`text-2xl md:text-3xl font-black mb-8 px-4 leading-relaxed py-4 rounded-2xl border-4 w-full shadow-inner ${resultType === "spy" ? "bg-yellow-300 border-yellow-500 text-slate-900" : resultType === "hit" ? "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-emerald-600 dark:text-emerald-400" : resultType === "trap" ? "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-purple-700 dark:text-purple-400" : resultType === "commander" ? "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-amber-600 dark:text-amber-400" : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-800 dark:text-white"}`}
                       >
                         {resultMsg}
                       </h3>
-
                       <button
                         onClick={nextTurn}
-                        className={`w-full py-5 text-xl font-black rounded-2xl border-4 border-b-8 active:border-b-4 active:translate-y-1 shadow-[4px_4px_0px_#cbd5e1] dark:shadow-[4px_4px_0px_#000] flex items-center justify-center gap-3 transition-all mt-auto ${
-                          resultType === "spy"
-                            ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-800"
-                            : "bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 border-slate-900 dark:border-white"
-                        }`}
+                        className={`w-full py-5 text-xl font-black rounded-2xl border-4 border-b-8 active:border-b-4 active:translate-y-1 shadow-[4px_4px_0px_#cbd5e1] dark:shadow-[4px_4px_0px_#000] flex items-center justify-center gap-3 transition-all mt-auto ${resultType === "spy" ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-800" : "bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 border-slate-900 dark:border-white"}`}
                       >
                         <Swords className="w-6 h-6" strokeWidth={2.5} />{" "}
                         <span>إنهاء الدور والتالي</span>
@@ -1963,7 +2143,6 @@ export default function CastleBattleMainScreen() {
                 >
                   {hp1 > 0 ? team1Name : team2Name}
                 </span>
-
                 <button
                   onClick={() => window.location.reload()}
                   className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-2xl font-black rounded-2xl border-4 border-slate-900 dark:border-white border-b-8 active:border-b-4 active:translate-y-1 shadow-[6px_6px_0px_#cbd5e1] dark:shadow-[6px_6px_0px_#000] transition-all"
@@ -1984,7 +2163,7 @@ export default function CastleBattleMainScreen() {
                 <span className="text-sm text-slate-500 font-bold">جندي</span>
               </div>
             </div>
-            <div className="flex-1 w-full max-w-[500px] mx-auto mt-2">
+            <div className="flex-1 w-full max-w-[600px] mx-auto mt-2">
               {renderInteractiveCastle(false)}
             </div>
           </div>
@@ -1994,18 +2173,10 @@ export default function CastleBattleMainScreen() {
       {gameState === "playing" && battleStep === "result" && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 pointer-events-auto px-4">
           <div
-            className={`flex flex-col items-center justify-center p-8 md:p-14 w-full max-w-3xl rounded-[3rem] border-8 shadow-[20px_20px_0px_#000] animate-in zoom-in-95 duration-300 ${
-              resultType === "spy"
-                ? "bg-yellow-400 border-yellow-600"
-                : "bg-white dark:bg-slate-800 border-slate-900 dark:border-black"
-            }`}
+            className={`flex flex-col items-center justify-center p-8 md:p-14 w-full max-w-3xl rounded-[3rem] border-8 shadow-[20px_20px_0px_#000] animate-in zoom-in-95 duration-300 ${resultType === "spy" ? "bg-yellow-400 border-yellow-600" : "bg-white dark:bg-slate-800 border-slate-900 dark:border-black"}`}
           >
             <div
-              className={`w-28 h-28 rounded-full flex items-center justify-center mb-8 shadow-inner border-8 ${
-                resultType === "spy"
-                  ? "border-yellow-500 bg-yellow-300"
-                  : "border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-              }`}
+              className={`w-28 h-28 rounded-full flex items-center justify-center mb-8 shadow-inner border-8 ${resultType === "spy" ? "border-yellow-500 bg-yellow-300" : "border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"}`}
             >
               {resultType === "hit" && (
                 <CheckCircle2
@@ -2039,30 +2210,14 @@ export default function CastleBattleMainScreen() {
                 />
               )}
             </div>
-
             <h3
-              className={`text-2xl md:text-4xl font-black mb-10 px-6 leading-relaxed py-8 rounded-2xl border-4 w-full text-center shadow-inner ${
-                resultType === "spy"
-                  ? "bg-yellow-300 border-yellow-500 text-slate-900"
-                  : resultType === "hit"
-                    ? "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400"
-                    : resultType === "trap"
-                      ? "bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400"
-                      : resultType === "commander"
-                        ? "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400"
-                        : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white"
-              }`}
+              className={`text-2xl md:text-4xl font-black mb-10 px-6 leading-relaxed py-8 rounded-2xl border-4 w-full text-center shadow-inner ${resultType === "spy" ? "bg-yellow-300 border-yellow-500 text-slate-900" : resultType === "hit" ? "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400" : resultType === "trap" ? "bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400" : resultType === "commander" ? "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400" : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white"}`}
             >
               {resultMsg}
             </h3>
-
             <button
               onClick={nextTurn}
-              className={`w-full py-6 text-2xl font-black rounded-2xl border-4 border-b-8 active:border-b-4 active:translate-y-1 shadow-[6px_6px_0px_#000] flex items-center justify-center gap-3 transition-all ${
-                resultType === "spy"
-                  ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-800"
-                  : "bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 border-slate-900 dark:border-white"
-              }`}
+              className={`w-full py-6 text-2xl font-black rounded-2xl border-4 border-b-8 active:border-b-4 active:translate-y-1 shadow-[6px_6px_0px_#000] flex items-center justify-center gap-3 transition-all ${resultType === "spy" ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-800" : "bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 border-slate-900 dark:border-white"}`}
             >
               <Swords className="w-8 h-8" strokeWidth={2.5} />{" "}
               <span>إنهاء الدور والتالي</span>

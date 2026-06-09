@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Cairo } from "next/font/google";
-import { supabase } from "@/lib/supabase"; // تأكد من المسار
+import { supabase } from "@/lib/supabase";
 import {
   Shield,
   Swords,
@@ -22,6 +22,9 @@ import {
   Sun,
   Moon,
   RefreshCw,
+  Crosshair,
+  Skull,
+  MonitorPlay,
 } from "lucide-react";
 
 const cairo = Cairo({ subsets: ["arabic"], weight: ["400", "700", "900"] });
@@ -29,9 +32,25 @@ const cairo = Cairo({ subsets: ["arabic"], weight: ["400", "700", "900"] });
 const TOTAL_SOLDIERS = 120;
 const ROOMS_COUNT = 15;
 
-// ----------------------------------------------------
-// محرك خلفية الألعاب (Solid 3D Vibe)
-// ----------------------------------------------------
+// إحداثيات غرف القلعة التفاعلية (15 غرفة)
+const SVG_ROOMS = [
+  { id: 0, cx: 250, cy: 300 },
+  { id: 1, cx: 250, cy: 420 },
+  { id: 2, cx: 250, cy: 540 },
+  { id: 3, cx: 170, cy: 660 },
+  { id: 4, cx: 330, cy: 660 },
+  { id: 5, cx: 600, cy: 150 },
+  { id: 6, cx: 480, cy: 300 },
+  { id: 7, cx: 720, cy: 300 },
+  { id: 8, cx: 480, cy: 460 },
+  { id: 9, cx: 720, cy: 460 },
+  { id: 10, cx: 950, cy: 300 },
+  { id: 11, cx: 950, cy: 420 },
+  { id: 12, cx: 950, cy: 540 },
+  { id: 13, cx: 870, cy: 660 },
+  { id: 14, cx: 1030, cy: 660 },
+];
+
 const SolidGamingBackground = () => {
   const [isDark, setIsDark] = useState(true);
   const [icons, setIcons] = useState<any[]>([]);
@@ -421,6 +440,323 @@ export default function CastleWarJoinPage() {
         : "shadow-[0_8px_0_#be123c] dark:shadow-[0_8px_0_#881337]",
   };
 
+  // دالة عرض القلعة التفاعلية SVG المدمجة في شاشة الجوال
+  const renderInteractiveCastle = () => {
+    return (
+      <div
+        className={`relative w-full rounded-2xl overflow-hidden shadow-[4px_4px_0px_#0f172a] dark:shadow-[4px_4px_0px_#000] transition-colors duration-500`}
+      >
+        <svg
+          viewBox="0 -120 1200 1120"
+          className="w-full h-auto select-none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <linearGradient id="tower3D" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#0f172a" />
+              <stop offset="20%" stopColor="#1e293b" />
+              <stop offset="50%" stopColor="#334155" />
+              <stop offset="80%" stopColor="#1e293b" />
+              <stop offset="100%" stopColor="#020617" />
+            </linearGradient>
+            <linearGradient id="roofGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#78350f" />
+              <stop offset="30%" stopColor="#b45309" />
+              <stop offset="70%" stopColor="#d97706" />
+              <stop offset="100%" stopColor="#451a03" />
+            </linearGradient>
+
+            <linearGradient id="team1Glow" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#22d3ee" />
+              <stop offset="100%" stopColor="#0891b2" />
+            </linearGradient>
+            <linearGradient id="team2Glow" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#fb7185" />
+              <stop offset="100%" stopColor="#e11d48" />
+            </linearGradient>
+
+            <radialGradient id="bgAura" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="rgba(56, 189, 248, 0.15)" />
+              <stop offset="50%" stopColor="rgba(129, 140, 248, 0.05)" />
+              <stop offset="100%" stopColor="rgba(0, 0, 0, 0)" />
+            </radialGradient>
+            <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="12" result="blur1" />
+              <feGaussianBlur stdDeviation="24" result="blur2" />
+              <feMerge>
+                <feMergeNode in="blur2" />
+                <feMergeNode in="blur1" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter
+              id="deepShadow"
+              x="-20%"
+              y="-20%"
+              width="140%"
+              height="140%"
+            >
+              <feDropShadow
+                dx="0"
+                dy="15"
+                stdDeviation="10"
+                floodColor="#000000"
+                floodOpacity="0.8"
+              />
+            </filter>
+          </defs>
+
+          {/* هالة الخلفية */}
+          <rect x="0" y="-120" width="1200" height="1120" fill="#050b14" />
+          <circle cx="600" cy="500" r="500" fill="url(#bgAura)" />
+          <circle
+            cx="600"
+            cy="350"
+            r="250"
+            fill="#1e1b4b"
+            opacity="0.3"
+            filter="url(#neonGlow)"
+          />
+
+          {/* الصورة المدمجة كخلفية إن وجدت */}
+          <image
+            href="/castle-bg.png"
+            x="0"
+            y="-120"
+            width="1200"
+            height="1120"
+            preserveAspectRatio="xMidYMid slice"
+          />
+
+          {/* هيكل القلعة */}
+          <path
+            d="M 250 800 L 250 500 L 950 500 L 950 800 Z"
+            fill="url(#tower3D)"
+            filter="url(#deepShadow)"
+          />
+          <path
+            d="M 250 500 L 250 450 L 300 450 L 300 500 L 350 500 L 350 450 L 400 450 L 400 500 L 450 500 L 450 450 L 500 450 L 500 500 L 550 500 L 550 450 L 600 450 L 600 500 L 650 500 L 650 450 L 700 450 L 700 500 L 750 500 L 750 450 L 800 450 L 800 500 L 850 500 L 850 450 L 900 450 L 900 500 L 950 500 Z"
+            fill="url(#tower3D)"
+          />
+
+          {/* الأبراج */}
+          <rect
+            x="120"
+            y="200"
+            width="260"
+            height="600"
+            rx="10"
+            fill="url(#tower3D)"
+            filter="url(#deepShadow)"
+          />
+          <path
+            d="M 100 800 L 120 700 L 380 700 L 400 800 Z"
+            fill="url(#tower3D)"
+          />
+          <path
+            d="M 100 200 L 250 20 L 400 200 Z"
+            fill="url(#roofGradient)"
+            filter="url(#deepShadow)"
+          />
+          <path d="M 90 200 L 410 200 L 410 220 L 90 220 Z" fill="#b45309" />
+
+          <rect
+            x="820"
+            y="200"
+            width="260"
+            height="600"
+            rx="10"
+            fill="url(#tower3D)"
+            filter="url(#deepShadow)"
+          />
+          <path
+            d="M 800 800 L 820 700 L 1080 700 L 1100 800 Z"
+            fill="url(#tower3D)"
+          />
+          <path
+            d="M 800 200 L 950 20 L 1100 200 Z"
+            fill="url(#roofGradient)"
+            filter="url(#deepShadow)"
+          />
+          <path
+            d="M 790 200 L 1110 200 L 1110 220 L 790 220 Z"
+            fill="#b45309"
+          />
+
+          <rect
+            x="420"
+            y="80"
+            width="360"
+            height="720"
+            rx="15"
+            fill="url(#tower3D)"
+            filter="url(#deepShadow)"
+          />
+          <path
+            d="M 390 80 L 600 -80 L 810 80 Z"
+            fill="url(#roofGradient)"
+            filter="url(#deepShadow)"
+          />
+          <path d="M 380 80 L 820 80 L 820 110 L 380 110 Z" fill="#f59e0b" />
+
+          {/* البوابة والتفاصيل */}
+          <path
+            d="M 480 800 L 480 620 A 120 120 0 0 1 720 620 L 720 800 Z"
+            fill="#020617"
+            stroke={selectedTeam === 1 ? "#0891b2" : "#e11d48"}
+            strokeWidth="8"
+            filter="url(#neonGlow)"
+          />
+          <path
+            d="M 540 800 L 540 620 A 60 60 0 0 1 660 620 L 660 800"
+            fill="none"
+            stroke={selectedTeam === 1 ? "#22d3ee" : "#fb7185"}
+            strokeWidth="4"
+            opacity="0.6"
+          />
+          <circle
+            cx="600"
+            cy="710"
+            r="30"
+            fill={selectedTeam === 1 ? "url(#team1Glow)" : "url(#team2Glow)"}
+            filter="url(#neonGlow)"
+          />
+          <circle cx="600" cy="710" r="15" fill="#ffffff" />
+
+          {/* القاعدة المستطيلة */}
+          <rect
+            x="80"
+            y="800"
+            width="1040"
+            height="40"
+            rx="5"
+            fill="#0f172a"
+            filter="url(#deepShadow)"
+          />
+          <rect
+            x="40"
+            y="840"
+            width="1120"
+            height="60"
+            rx="10"
+            fill="#020617"
+            filter="url(#deepShadow)"
+          />
+
+          {/* الرسومات التجميلية */}
+          <foreignObject x="560" y="520" width="80" height="80">
+            <Swords className="text-slate-500 w-full h-full opacity-60" />
+          </foreignObject>
+          <foreignObject x="420" y="740" width="40" height="40">
+            <Skull className="text-slate-500 w-full h-full opacity-60" />
+          </foreignObject>
+          <foreignObject x="740" y="740" width="40" height="40">
+            <Skull className="text-slate-500 w-full h-full opacity-60" />
+          </foreignObject>
+
+          {/* رسم الغرف التفاعلية للوحة التحكم */}
+          {SVG_ROOMS.map((room) => {
+            const isCommander = commanderRoom === room.id;
+            const isTrap = trapRoom === room.id;
+            const count = rooms[room.id];
+            const isActive = activeRoomIdx === room.id;
+            const glowColor =
+              selectedTeam === 1 ? "url(#team1Glow)" : "url(#team2Glow)";
+            const strokeColor = isActive
+              ? "stroke-amber-400"
+              : selectedTeam === 1
+                ? "stroke-cyan-500"
+                : "stroke-rose-500";
+
+            return (
+              <g
+                key={room.id}
+                onClick={() => setActiveRoomIdx(room.id)}
+                className={`cursor-pointer transition-transform duration-200 ease-out will-change-transform group ${isActive ? "scale-[1.12] z-20" : "hover:scale-[1.05] z-10"}`}
+                style={{ transformOrigin: `${room.cx}px ${room.cy}px` }}
+              >
+                <path
+                  d={`M ${room.cx - 35} ${room.cy + 45} L ${room.cx + 35} ${room.cy + 45} L ${room.cx + 35} ${room.cy - 10} A 35 35 0 0 0 ${room.cx - 35} ${room.cy - 10} Z`}
+                  className={`fill-[#0f172a] stroke-[3px] transition-colors duration-200 ${strokeColor}`}
+                  filter="url(#deepShadow)"
+                />
+
+                <path
+                  d={`M ${room.cx - 25} ${room.cy + 35} L ${room.cx + 25} ${room.cy + 35} L ${room.cx + 25} ${room.cy - 5} A 25 25 0 0 0 ${room.cx - 25} ${room.cy - 5} Z`}
+                  fill={
+                    count > 0 || isCommander || isTrap ? glowColor : "#020617"
+                  }
+                  className="group-hover:brightness-125 transition-all duration-200"
+                  filter={
+                    count > 0 || isCommander || isTrap ? "url(#neonGlow)" : ""
+                  }
+                />
+
+                <line
+                  x1={room.cx - 25}
+                  y1={room.cy + 15}
+                  x2={room.cx + 25}
+                  y2={room.cy + 15}
+                  stroke="#020617"
+                  strokeWidth="3"
+                  opacity="0.7"
+                />
+                <line
+                  x1={room.cx}
+                  y1={room.cy - 30}
+                  x2={room.cx}
+                  y2={room.cy + 35}
+                  stroke="#020617"
+                  strokeWidth="3"
+                  opacity="0.7"
+                />
+
+                <foreignObject
+                  x={room.cx - 60}
+                  y={room.cy - 60}
+                  width="120"
+                  height="120"
+                  className="pointer-events-none"
+                >
+                  <div className="w-full h-full flex flex-col items-center justify-center relative overflow-visible">
+                    {isCommander ? (
+                      <Crown
+                        className="text-amber-400 drop-shadow-[0_2px_0_#000] z-40 w-12 h-12"
+                        strokeWidth={2.5}
+                      />
+                    ) : isTrap ? (
+                      <Bomb
+                        className="text-purple-400 drop-shadow-[0_2px_0_#000] z-40 w-12 h-12"
+                        strokeWidth={2.5}
+                      />
+                    ) : count > 0 ? (
+                      <span
+                        className={`font-black z-30 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] text-4xl text-white`}
+                      >
+                        {count}
+                      </span>
+                    ) : (
+                      <span className="font-black z-30 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] text-2xl text-slate-400 opacity-50">
+                        {room.id + 1}
+                      </span>
+                    )}
+
+                    {isActive && (
+                      <Crosshair
+                        className="absolute text-amber-400 drop-shadow-[0_2px_0_#000] animate-spin-slow opacity-90 z-10 w-16 h-16"
+                        strokeWidth={3}
+                      />
+                    )}
+                  </div>
+                </foreignObject>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    );
+  };
+
   return (
     <main
       className={`min-h-[100dvh] relative flex flex-col items-center p-4 ${cairo.className} bg-slate-50 dark:bg-[#0f172a] transition-colors duration-500`}
@@ -435,7 +771,6 @@ export default function CastleWarJoinPage() {
         .dark .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
         @keyframes floatGameExtra { 0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); } 25% { transform: translate(-20px, 15px) rotate(8deg) scale(1.05); } 50% { transform: translate(-10px, -15px) rotate(-8deg) scale(0.95); } 75% { transform: translate(15px, 20px) rotate(5deg) scale(1.02); } }
         .animate-float-game-extra { animation: floatGameExtra ease-in-out infinite; }
-        /* إخفاء أسهم الإدخال الرقمي */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { 
           -webkit-appearance: none; 
@@ -552,7 +887,7 @@ export default function CastleWarJoinPage() {
                   قيادة جيش {selectedTeam === 1 ? team1Name : team2Name}
                 </h2>
                 <p className="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1">
-                  خريطة التوزيع الشبكية
+                  حدد النافذة لتوزيع جيشك
                 </p>
               </div>
               <div className="flex gap-2">
@@ -573,7 +908,7 @@ export default function CastleWarJoinPage() {
 
             {/* عداد الجنود */}
             <div
-              className={`${theme.lightBg} border-b-4 border-slate-200 dark:border-slate-700 p-5 flex items-center justify-between shadow-inner shrink-0`}
+              className={`${theme.lightBg} border-b-4 border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between shadow-inner shrink-0`}
             >
               <div className="flex items-center gap-3">
                 <div
@@ -586,57 +921,17 @@ export default function CastleWarJoinPage() {
                 </span>
               </div>
               <div
-                className={`font-black text-4xl font-mono px-4 py-1 rounded-xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 shadow-inner ${remainingSoldiers === 0 ? "text-emerald-500" : "text-amber-500"} transition-colors`}
+                className={`font-black text-3xl font-mono px-4 py-1 rounded-xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 shadow-inner ${remainingSoldiers === 0 ? "text-emerald-500" : "text-amber-500"} transition-colors`}
               >
                 {remainingSoldiers}
               </div>
             </div>
 
-            {/* الخريطة والغرف */}
+            {/* الخريطة التفاعلية */}
             <div
               className={`flex-1 relative flex flex-col items-center justify-start p-4 overflow-y-auto overflow-x-hidden custom-scroll bg-slate-50 dark:bg-[#0f172a]`}
             >
-              <img
-                src="/castle.png"
-                alt="Tactical Map"
-                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[120%] max-w-[500px] h-auto opacity-10 dark:opacity-5 grayscale pointer-events-none z-0"
-              />
-
-              <div
-                className="relative z-10 w-full grid grid-cols-5 gap-x-2 gap-y-10 mt-8 mb-10"
-                dir="rtl"
-              >
-                {rooms.map((count, idx) => {
-                  const isCommander = commanderRoom === idx;
-                  const isTrap = trapRoom === idx;
-                  const isActive = activeRoomIdx === idx;
-
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => setActiveRoomIdx(idx)}
-                      className={`relative flex flex-col items-center justify-center transition-all duration-300 ${isActive ? "scale-110 z-20" : "scale-100 z-10"}`}
-                    >
-                      <div
-                        className={`w-12 h-12 md:w-14 md:h-14 rounded-full border-4 flex items-center justify-center transition-colors relative shadow-[0_4px_0_rgba(0,0,0,0.2)] dark:shadow-[0_4px_0_rgba(0,0,0,0.5)] ${isCommander ? "bg-amber-400 border-amber-600 text-slate-900" : isTrap ? "bg-purple-500 border-purple-700 text-white" : count > 0 ? `${theme.btn} text-white` : "bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400"} ${isActive ? `border-slate-900 dark:border-white ring-4 ring-slate-900/20` : ""}`}
-                      >
-                        {isCommander ? (
-                          <Crown size={20} strokeWidth={2.5} />
-                        ) : isTrap ? (
-                          <Bomb size={20} strokeWidth={2.5} />
-                        ) : (
-                          <span className="font-black text-xl md:text-2xl font-mono drop-shadow-sm">
-                            {count}
-                          </span>
-                        )}
-                        <span className="absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-[9px] font-black text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded-lg shadow-sm border-2 border-slate-200 dark:border-slate-700 whitespace-nowrap">
-                          {idx + 1}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              {renderInteractiveCastle()}
             </div>
 
             {/* لوحة التحكم السفلية */}
@@ -648,7 +943,7 @@ export default function CastleWarJoinPage() {
                   <div className="flex justify-between items-center mb-4 border-b-2 border-slate-100 dark:border-slate-700 pb-3">
                     <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
                       <MapPin size={20} className={`${theme.text}`} /> تعديل
-                      الغرفة {activeRoomIdx + 1}
+                      النافذة رقم {activeRoomIdx + 1}
                     </h3>
                     <button
                       onClick={() => setActiveRoomIdx(null)}
@@ -744,8 +1039,8 @@ export default function CastleWarJoinPage() {
                         strokeWidth={2.5}
                       />
                       <p className="leading-relaxed">
-                        وزع الـ 150 جندي بالكامل، وعين القائد والفخ في غرفتين
-                        مختلفتين لاعتماد الخطة.
+                        وزع الـ {TOTAL_SOLDIERS} جندي بالكامل، وعين القائد والفخ
+                        في غرفتين مختلفتين لاعتماد الخطة.
                       </p>
                     </div>
                   )}
@@ -770,7 +1065,7 @@ export default function CastleWarJoinPage() {
           </div>
         )}
 
-        {/* ===================== شاشة الانتظار (Done) ===================== */}
+        {/* ===================== شاشة الانتظار (Done) والانتقال للمشاهدة ===================== */}
         {step === "done" && (
           <div className="bg-white dark:bg-slate-800 border-4 border-slate-900 dark:border-black rounded-3xl p-10 shadow-[8px_8px_0px_#0f172a] dark:shadow-[8px_8px_0px_#000] animate-in zoom-in text-center my-auto w-full">
             <div className="w-32 h-32 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-500 dark:text-emerald-400 rounded-3xl mx-auto flex items-center justify-center mb-8 border-4 border-emerald-300 dark:border-emerald-700 shadow-inner animate-bounce">
@@ -780,25 +1075,19 @@ export default function CastleWarJoinPage() {
               تم اعتماد الخطة!
             </h2>
             <p className="text-slate-500 dark:text-slate-400 font-bold mb-8 text-lg leading-relaxed bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 shadow-inner">
-              تم إرسال توزيع جيشك النهائي لشاشة الحكم بسرية تامة. استعد لبدء
-              الهجوم.
+              تم إرسال توزيع جيشك النهائي لشاشة الحكم بسرية تامة. يمكنك الآن
+              الانتقال لمشاهدة المعركة الحية من جوالك.
             </p>
-            <div
-              className={`bg-slate-100 dark:bg-slate-900 border-4 border-slate-200 dark:border-slate-700 p-6 rounded-3xl shadow-sm`}
+
+            <button
+              onClick={() =>
+                (window.location.href = `/games/castle-war/display?code=${roomCode}`)
+              }
+              className="w-full py-5 bg-indigo-500 hover:bg-indigo-400 text-white font-black text-xl rounded-2xl border-4 border-slate-900 dark:border-black border-b-8 active:border-b-4 active:translate-y-1 shadow-[4px_4px_0px_#0f172a] transition-all flex items-center justify-center gap-3"
             >
-              <p
-                className={`text-slate-900 dark:text-white font-black text-2xl animate-pulse flex items-center justify-center gap-3`}
-              >
-                راقب الشاشة الرئيسية{" "}
-                <Swords
-                  size={28}
-                  className={
-                    selectedTeam === 1 ? "text-cyan-500" : "text-rose-500"
-                  }
-                  strokeWidth={3}
-                />
-              </p>
-            </div>
+              الانتقال لشاشة المعركة 📺{" "}
+              <MonitorPlay size={24} strokeWidth={2.5} />
+            </button>
           </div>
         )}
       </div>
