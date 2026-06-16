@@ -292,16 +292,41 @@ export default function AdminDashboardMain() {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
-        const data = JSON.parse(event.target?.result as string);
-        Object.keys(data).forEach((key) =>
-          localStorage.setItem(key, data[key]),
-        );
-        alert("تم استعادة النسخة الاحتياطية بنجاح!");
+        const fileData = JSON.parse(event.target?.result as string);
+        
+        for (const key of Object.keys(fileData)) {
+          const stringValue = fileData[key];
+          
+          // 1. الحفظ في المتصفح مثل أول عشان الواجهة ما تتأثر
+          localStorage.setItem(key, stringValue);
+
+          // 2. تحويل النص إلى كائن (Object) عشان يقبله السيرفر كـ jsonb
+          let parsedValue;
+          try {
+            parsedValue = JSON.parse(stringValue);
+          } catch (err) {
+            parsedValue = stringValue;
+          }
+
+          // 3. تحديد الجدول المناسب والرفع المباشر لـ Supabase
+          const tableName = key.includes("wd_") ? "wd_settings" : key.includes("cw_") ? "cw_settings" : null;
+          
+          if (tableName) {
+            await supabase.from(tableName).upsert({
+              id: key,
+              data: parsedValue,
+              updated_at: new Date().toISOString(),
+            });
+          }
+        }
+        
+        alert("تم استعادة النسخة الاحتياطية ورفعها للسيرفر بنجاح! ✅");
         window.location.reload();
       } catch (error) {
-        alert("الملف غير صالح!");
+        console.error("خطأ في الرفع للسيرفر:", error);
+        alert("الملف غير صالح أو حدث خطأ أثناء الاتصال بقاعدة البيانات!");
       }
     };
     reader.readAsText(file);

@@ -23,6 +23,7 @@ import {
   Moon,
   Sun,
 } from "lucide-react";
+import { createBrowserClient } from "@supabase/ssr";
 
 const cairo = Cairo({ subsets: ["arabic"], weight: ["400", "700", "900"] });
 const geoUrl = "https://unpkg.com/world-atlas@2.0.2/countries-110m.json";
@@ -60,6 +61,13 @@ const modernScrollbar =
   "[&::-webkit-scrollbar]:w-1.5 lg:[&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-slate-100 dark:[&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-thumb]:bg-slate-300 dark:[&::-webkit-scrollbar-thumb]:bg-slate-600 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 dark:hover:[&::-webkit-scrollbar-thumb]:bg-slate-500";
 
 export default function WorldDominationAudience() {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [inputCode, setInputCode] = useState<string>("");
   const [liveData, setLiveData] = useState<any>(null);
   const [isDark, setIsDark] = useState<boolean>(true);
 
@@ -72,23 +80,88 @@ export default function WorldDominationAudience() {
   }, [isDark]);
 
   useEffect(() => {
-    const sync = () => {
-      const data = localStorage.getItem("wd_live_sync");
-      if (data) setLiveData(JSON.parse(data));
-    };
-    sync();
-    window.addEventListener("storage", sync);
-    const interval = setInterval(sync, 500);
-    return () => {
-      window.removeEventListener("storage", sync);
-      clearInterval(interval);
-    };
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get("room");
+    if (room) {
+      setRoomCode(room.toUpperCase());
+    }
   }, []);
+
+  useEffect(() => {
+    if (!roomCode) return;
+
+    const fetchInitialData = async () => {
+      const { data, error } = await supabase
+        .from("wd_rooms")
+        .select("live_sync")
+        .eq("room_code", roomCode)
+        .single();
+      
+      if (data && !error) {
+        setLiveData(data.live_sync);
+      }
+    };
+    
+    fetchInitialData();
+
+    const channel = supabase
+      .channel('wd_live_sync_channel')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'wd_rooms',
+          filter: `room_code=eq.${roomCode}`
+        },
+        (payload) => {
+          setLiveData(payload.new.live_sync);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, roomCode]);
+
+  if (!roomCode) {
+    return (
+      <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4 ${cairo.className}`} dir="rtl">
+        <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-8 max-w-sm w-full text-center shadow-xl border border-slate-200 dark:border-slate-800">
+          <Globe className="w-16 h-16 text-blue-500 mx-auto mb-6 animate-pulse" />
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">الدخول للرادار</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-bold mb-6">الرجاء إدخال كود الغرفة المكون من 4 أحرف للانضمام لشاشة الجمهور.</p>
+          <input
+            type="text"
+            value={inputCode}
+            onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+            placeholder="مثال: W7K9"
+            maxLength={4}
+            className="w-full text-center p-4 bg-slate-100 dark:bg-slate-800 rounded-xl font-mono text-2xl font-black mb-4 uppercase outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+          />
+          <button
+            onClick={() => {
+              if (inputCode.length >= 4) {
+                setRoomCode(inputCode);
+                window.history.pushState({}, '', `?room=${inputCode}`);
+              }
+            }}
+            disabled={inputCode.length < 4}
+            className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-black transition-colors"
+          >
+            انضمام للغرفة
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!liveData)
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-500 dark:bg-slate-950 dark:text-slate-300 flex items-center justify-center font-black text-lg lg:text-2xl tracking-widest animate-pulse transition-colors duration-500">
-        جاري تهيئة ساحة المعركة...
+      <div className="min-h-screen bg-slate-50 text-slate-500 dark:bg-slate-950 dark:text-slate-300 flex flex-col items-center justify-center font-black tracking-widest animate-pulse transition-colors duration-500" dir="rtl">
+        <div className="text-2xl lg:text-3xl mb-4">جاري تهيئة ساحة المعركة...</div>
+        <div className="text-sm text-blue-500 font-mono">غرفة: {roomCode}</div>
       </div>
     );
 

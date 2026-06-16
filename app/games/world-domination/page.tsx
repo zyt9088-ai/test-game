@@ -33,6 +33,7 @@ import {
   CheckCircle2,
   Crosshair,
 } from "lucide-react";
+import { createBrowserClient } from "@supabase/ssr";
 
 const cairo = Cairo({ subsets: ["arabic"], weight: ["400", "700", "900"] });
 const geoUrl = "https://unpkg.com/world-atlas@2.0.2/countries-110m.json";
@@ -70,6 +71,13 @@ const modernScrollbar =
   "[&::-webkit-scrollbar]:w-1.5 lg:[&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-slate-100 dark:[&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-thumb]:bg-slate-300 dark:[&::-webkit-scrollbar-thumb]:bg-slate-600 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 dark:hover:[&::-webkit-scrollbar-thumb]:bg-slate-500";
 
 export default function WorldDominationGame() {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+  const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [showAudienceModal, setShowAudienceModal] = useState<boolean>(false);
+
   const [gameState, setGameState] = useState<
     | "lobby"
     | "setupMap"
@@ -137,24 +145,25 @@ export default function WorldDominationGame() {
   const [quickProtectTeam, setQuickProtectTeam] = useState<1 | 2 | null>(null);
 
   useEffect(() => {
-    const initGame = () => {
+    const initGame = async () => {
       setIsLoading(true);
       if (typeof window !== "undefined") {
         setAudienceUrl(
           `${window.location.origin}/games/world-domination/audience`
         );
       }
-      const savedCountries = localStorage.getItem("admin_wd_countries_db");
-      if (savedCountries) {
-        try {
-          setDbCountries(JSON.parse(savedCountries));
-        } catch (e) {}
-      }
-      const savedChallenges = localStorage.getItem("admin_wd_challenges_db");
-      if (savedChallenges) {
-        try {
-          setDbWdChallenges(JSON.parse(savedChallenges));
-        } catch (e) {}
+      
+      try {
+        // سحب البيانات من السيرفر مباشرة
+        const { data, error } = await supabase.from("wd_settings").select("*");
+        if (data && !error) {
+          data.forEach((item) => {
+            if (item.id === "admin_wd_countries_db") setDbCountries(item.data || []);
+            if (item.id === "admin_wd_challenges_db") setDbWdChallenges(item.data || []);
+          });
+        }
+      } catch (e) {
+        console.error("خطأ في جلب بيانات البنك:", e);
       }
       
       setTimeout(() => {
@@ -163,40 +172,55 @@ export default function WorldDominationGame() {
     };
 
     initGame();
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
-    localStorage.setItem(
-      "wd_live_sync",
-      JSON.stringify({
-        gameState,
-        team1Name,
-        team2Name,
-        score1,
-        score2,
-        turn,
-        countries,
-        selectedCountry:
-          isAttacking && !selectedCountry?.activeQuestion
-            ? null
-            : selectedCountry,
-        timer,
-        team1Choice,
-        team2Choice,
-        showResult,
-        isAttacking,
-        isQuestionRevealed,
-        cards1,
-        cards2,
-        protectedCountries,
-        challengesUsed1,
-        challengesUsed2,
-        mapPosition,
-        capitals,
-        stolenCapitalAlert,
-        timestamp: Date.now(),
-      })
-    );
+    if (!roomCode) return;
+
+    const syncData = {
+      gameState,
+      team1Name,
+      team2Name,
+      score1,
+      score2,
+      turn,
+      countries,
+      selectedCountry:
+        isAttacking && !selectedCountry?.activeQuestion
+          ? null
+          : selectedCountry,
+      timer,
+      team1Choice,
+      team2Choice,
+      showResult,
+      isAttacking,
+      isQuestionRevealed,
+      cards1,
+      cards2,
+      protectedCountries,
+      challengesUsed1,
+      challengesUsed2,
+      mapPosition,
+      capitals,
+      stolenCapitalAlert,
+      timestamp: Date.now(),
+    };
+
+    localStorage.setItem("wd_live_sync", JSON.stringify(syncData));
+
+    const syncToSupabase = async () => {
+      try {
+        await supabase.from("wd_rooms").upsert({
+          room_code: roomCode,
+          live_sync: syncData,
+          created_at: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error("خطأ في المزامنة اللحظية:", e);
+      }
+    };
+
+    syncToSupabase();
   }, [
     gameState,
     team1Name,
@@ -220,6 +244,8 @@ export default function WorldDominationGame() {
     mapPosition,
     capitals,
     stolenCapitalAlert,
+    supabase,
+    roomCode
   ]);
 
   useEffect(() => {
@@ -285,6 +311,12 @@ export default function WorldDominationGame() {
     setCapitals({ team1: null, team2: null });
     setMapPosition({ center: [0, 0], zoom: 1, name: "العالم" });
     setStolenCapitalAlert(null);
+
+    const newCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+    setRoomCode(newCode);
+    if (typeof window !== "undefined") {
+      setAudienceUrl(`${window.location.origin}/games/world-domination/audience?room=${newCode}`);
+    }
 
     setGameState("setupMap");
   };
@@ -1113,15 +1145,17 @@ export default function WorldDominationGame() {
             </div>
           )}
 
-          <Link
-            href="/games/world-domination/audience"
-            target="_blank"
-            className="px-3 py-1.5 lg:px-4 lg:py-2 bg-blue-600 text-white rounded-xl flex items-center gap-1.5 lg:gap-2 font-black text-[10px] lg:text-xs shadow-sm"
+          <button
+            onClick={() => {
+              if (!roomCode) alert("الرجاء بدء اللعبة أولاً لتوليد كود الغرفة!");
+              else setShowAudienceModal(true);
+            }}
+            className="px-3 py-1.5 lg:px-4 lg:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center gap-1.5 lg:gap-2 font-black text-[10px] lg:text-xs shadow-sm transition-colors"
           >
             <MonitorPlay size={14} className="lg:w-4 lg:h-4" />{" "}
             <span className="hidden sm:inline">شاشة الجمهور</span>
             <span className="sm:hidden">عرض</span>
-          </Link>
+          </button>
         </div>
 
         {gameState === "lobby" ? (
@@ -2629,6 +2663,51 @@ export default function WorldDominationGame() {
             </div>
           </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showAudienceModal && (
+        <div className="fixed inset-0 z-[300] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 lg:p-8 max-w-sm w-full border-2 border-blue-500 text-center shadow-2xl animate-in zoom-in-95 relative">
+            <button
+              onClick={() => setShowAudienceModal(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <MonitorPlay className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+            <h3 className="text-xl lg:text-2xl font-black mb-2 dark:text-white">
+              دعوة للرادار (شاشة الجمهور)
+            </h3>
+            <p className="text-slate-500 mb-6 text-sm font-bold">
+              امسح الباركود، أو انسخ الرابط، أو أدخل الكود في صفحة الجمهور.
+            </p>
+
+            <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl mb-6">
+              <p className="text-xs text-slate-500 font-bold mb-1">كود الغرفة:</p>
+              <p className="text-4xl font-mono font-black text-blue-600 dark:text-blue-400 tracking-widest">
+                {roomCode}
+              </p>
+            </div>
+
+            <div className="bg-white p-2 rounded-2xl shadow-sm border-2 border-slate-200 w-fit mx-auto mb-6">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(audienceUrl)}`}
+                alt="QR Code"
+                className="w-32 h-32"
+              />
+            </div>
+
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(audienceUrl);
+                alert("تم نسخ الرابط بنجاح! ✅");
+              }}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl transition-colors text-sm"
+            >
+              نسخ الرابط
+            </button>
           </div>
         </div>
       )}

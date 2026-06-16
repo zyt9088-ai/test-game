@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Target,
 } from "lucide-react";
+import { createBrowserClient } from "@supabase/ssr";
 
 const cairo = Cairo({ subsets: ["arabic"], weight: ["400", "700", "900"] });
 const geoUrl = "https://unpkg.com/world-atlas@2.0.2/countries-110m.json";
@@ -91,9 +92,15 @@ const ParticleBackground = () => {
 };
 
 export default function WorldDominationAdmin() {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+
   const [wdActiveSubTab, setWdActiveSubTab] = useState<"map" | "challenges">(
     "map",
   );
+  const [isLoading, setIsLoading] = useState(true);
   const [wdCountries, setWdCountries] = useState<any[]>([]);
   const [newWdCountryName, setNewWdCountryName] = useState<string>("");
   const [selectedGeoId, setSelectedGeoId] = useState<string | null>(null);
@@ -114,20 +121,42 @@ export default function WorldDominationAdmin() {
   const questionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const savedWdCountries = localStorage.getItem("admin_wd_countries_db");
-    if (savedWdCountries) {
+    const loadData = async () => {
+      setIsLoading(true);
       try {
-        setWdCountries(JSON.parse(savedWdCountries));
-      } catch (e) {}
-    }
-
-    const savedWdChallenges = localStorage.getItem("admin_wd_challenges_db");
-    if (savedWdChallenges) {
-      try {
-        setWdChallengesDB(JSON.parse(savedWdChallenges));
-      } catch (e) {}
-    }
+        const { data, error } = await supabase.from("wd_settings").select("*");
+        if (data && !error) {
+          data.forEach((item) => {
+            if (item.id === "admin_wd_countries_db") setWdCountries(item.data);
+            if (item.id === "admin_wd_challenges_db") setWdChallengesDB(item.data);
+          });
+        }
+      } catch (e) {
+        console.error("Error loading WD data:", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
   }, []);
+
+  const saveToSupabase = async (id: string, data: any) => {
+    try {
+      const { error } = await supabase
+        .from("wd_settings")
+        .upsert({ id, data, updated_at: new Date().toISOString() });
+        
+      if (error) {
+        console.error("تفاصيل الخطأ من Supabase:", error);
+        alert("تعذر الحفظ في قاعدة البيانات ❌: " + error.message);
+      } else {
+        console.log("تم الحفظ في Supabase بنجاح ✅");
+      }
+    } catch (err) {
+      console.error("خطأ عام:", err);
+      alert("مشكلة في الاتصال بالسيرفر!");
+    }
+  };
 
   const scrollToForm = () => {
     setTimeout(() => {
@@ -144,7 +173,7 @@ export default function WorldDominationAdmin() {
     }, 150);
   };
 
-  const addWdCountry = () => {
+  const addWdCountry = async () => {
     if (!selectedGeoId || !newWdCountryName.trim()) {
       alert("الرجاء اختيار دولة من الخريطة وكتابة اسمها أولاً.");
       return;
@@ -157,7 +186,7 @@ export default function WorldDominationAdmin() {
           : c,
       );
       setWdCountries(newData);
-      localStorage.setItem("admin_wd_countries_db", JSON.stringify(newData));
+      await saveToSupabase("admin_wd_countries_db", newData);
       setEditingCountryId(null);
     } else {
       const newCountry = {
@@ -169,7 +198,7 @@ export default function WorldDominationAdmin() {
       };
       const newData = [...wdCountries, newCountry];
       setWdCountries(newData);
-      localStorage.setItem("admin_wd_countries_db", JSON.stringify(newData));
+      await saveToSupabase("admin_wd_countries_db", newData);
       setManagingQuestionsFor(newCountry.id);
       scrollToQuestions();
     }
@@ -190,17 +219,17 @@ export default function WorldDominationAdmin() {
     setSelectedGeoId(null);
   };
 
-  const deleteWdCountry = (id: string) => {
+  const deleteWdCountry = async (id: string) => {
     if (confirm("هل أنت متأكد من حذف هذه الدولة بالكامل؟")) {
       const newData = wdCountries.filter((c) => c.id !== id);
       setWdCountries(newData);
-      localStorage.setItem("admin_wd_countries_db", JSON.stringify(newData));
+      await saveToSupabase("admin_wd_countries_db", newData);
       if (editingCountryId === id) cancelEditWdCountry();
       if (managingQuestionsFor === id) setManagingQuestionsFor(null);
     }
   };
 
-  const addWdQuestion = () => {
+  const addWdQuestion = async () => {
     if (
       !newWdQ.trim() ||
       !wdOpt1.trim() ||
@@ -228,7 +257,7 @@ export default function WorldDominationAdmin() {
       return c;
     });
     setWdCountries(newData);
-    localStorage.setItem("admin_wd_countries_db", JSON.stringify(newData));
+    await saveToSupabase("admin_wd_countries_db", newData);
 
     setNewWdQ("");
     setWdOpt1("");
@@ -237,7 +266,7 @@ export default function WorldDominationAdmin() {
     setWdCorrectOpt(1);
   };
 
-  const deleteWdQuestion = (qIndex: number) => {
+  const deleteWdQuestion = async (qIndex: number) => {
     const newData = wdCountries.map((c) => {
       if (c.id === managingQuestionsFor) {
         const updatedQ = [...(c.questions || [])];
@@ -247,22 +276,31 @@ export default function WorldDominationAdmin() {
       return c;
     });
     setWdCountries(newData);
-    localStorage.setItem("admin_wd_countries_db", JSON.stringify(newData));
+    await saveToSupabase("admin_wd_countries_db", newData);
   };
 
-  const addWdChallenge = () => {
+  const addWdChallenge = async () => {
     if (!newWdChallenge.trim()) return;
     const newData = [...wdChallengesDB, newWdChallenge.trim()];
     setWdChallengesDB(newData);
-    localStorage.setItem("admin_wd_challenges_db", JSON.stringify(newData));
+    await saveToSupabase("admin_wd_challenges_db", newData);
     setNewWdChallenge("");
   };
 
-  const deleteWdChallenge = (idx: number) => {
+  const deleteWdChallenge = async (idx: number) => {
     const newData = wdChallengesDB.filter((_, i) => i !== idx);
     setWdChallengesDB(newData);
-    localStorage.setItem("admin_wd_challenges_db", JSON.stringify(newData));
+    await saveToSupabase("admin_wd_challenges_db", newData);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-black text-2xl" dir="rtl">
+        <Globe className="w-20 h-20 text-blue-500 animate-spin-slow mb-4" />
+        <p className="animate-pulse">جاري الاتصال بمركز القيادة...</p>
+      </div>
+    );
+  }
 
   return (
     <main
