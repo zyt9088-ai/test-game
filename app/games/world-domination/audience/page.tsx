@@ -90,15 +90,51 @@ export default function WorldDominationAudience() {
   useEffect(() => {
     if (!roomCode) return;
 
+    // دالة ذكية لتجميع الأعمدة المنفصلة وتحويلها للهيكل اللي تفهمه شاشتك بدون تكسير للكود
+    const mapColumnsToLiveData = (dbRow: any) => {
+      if (!dbRow) return null;
+      return {
+        gameState: dbRow.game_state,
+        team1Name: dbRow.team1_name,
+        team2Name: dbRow.team2_name,
+        score1: dbRow.score1,
+        score2: dbRow.score2,
+        turn: dbRow.turn,
+        timer: dbRow.timer,
+        selectedCountry: dbRow.current_country_id ? {
+          id: dbRow.current_country_id,
+          name: dbRow.countries?.find((c: any) => c.id === dbRow.current_country_id)?.name || "",
+          isChallenge: dbRow.countries?.find((c: any) => c.id === dbRow.current_country_id)?.isChallenge || false,
+          isStolen: dbRow.countries?.find((c: any) => c.id === dbRow.current_country_id)?.isStolen || false,
+          value: dbRow.countries?.find((c: any) => c.id === dbRow.current_country_id)?.value || 1000,
+          activeQuestion: dbRow.active_question
+        } : null,
+        team1Choice: dbRow.team1_choice,
+        team2Choice: dbRow.team2_choice,
+        showResult: dbRow.show_result,
+        isAttacking: dbRow.is_attacking,
+        isQuestionRevealed: dbRow.is_question_revealed,
+        cards1: dbRow.cards1,
+        cards2: dbRow.cards2,
+        protectedCountries: dbRow.protected_countries || {},
+        challengesUsed1: dbRow.challenges_used1,
+        challengesUsed2: dbRow.challenges_used2,
+        mapPosition: dbRow.map_position,
+        capitals: dbRow.capitals || { team1: null, team2: null },
+        stolenCapitalAlert: dbRow.stolen_capital_alert,
+        countries: dbRow.countries || []
+      };
+    };
+
     const fetchInitialData = async () => {
       const { data, error } = await supabase
         .from("wd_rooms")
-        .select("live_sync")
+        .select("*")
         .eq("room_code", roomCode)
         .single();
       
       if (data && !error) {
-        setLiveData(data.live_sync);
+        setLiveData(mapColumnsToLiveData(data));
       }
     };
     
@@ -116,8 +152,8 @@ export default function WorldDominationAudience() {
         },
         (payload) => {
           const newData = payload.new as any;
-          if (newData && newData.live_sync) {
-            setLiveData(newData.live_sync);
+          if (newData) {
+            setLiveData(mapColumnsToLiveData(newData));
           }
         }
       )

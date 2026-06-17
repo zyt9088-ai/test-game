@@ -180,42 +180,47 @@ export default function WorldDominationGame() {
   useEffect(() => {
     if (!roomCode) return;
 
-    const syncData = {
-      gameState,
-      team1Name,
-      team2Name,
-      score1,
-      score2,
-      turn,
-      countries,
-      selectedCountry:
-        isAttacking && !selectedCountry?.activeQuestion
-          ? null
-          : selectedCountry,
-      timer,
-      team1Choice,
-      team2Choice,
-      showResult,
-      isAttacking,
-      isQuestionRevealed,
-      cards1,
-      cards2,
-      protectedCountries,
-      challengesUsed1,
-      challengesUsed2,
-      mapPosition,
-      capitals,
-      stolenCapitalAlert,
-      timestamp: Date.now(),
+    // تنظيف مصفوفة الدول من الأسئلة الثقيلة لحماية السيرفر وتقليل الحجم والكوست
+    const cleanCountries = countries ? countries.map(({ questions, ...rest }) => rest) : [];
+
+    // حفظ نسخة محليّة كاملة للمتصفح الحالي لضمان استقرار الواجهة
+    const localSyncData = {
+      gameState, team1Name, team2Name, score1, score2, turn, countries,
+      selectedCountry: isAttacking && !selectedCountry?.activeQuestion ? null : selectedCountry,
+      timer, team1Choice, team2Choice, showResult, isAttacking, isQuestionRevealed,
+      cards1, cards2, protectedCountries, challengesUsed1, challengesUsed2,
+      mapPosition, capitals, stolenCapitalAlert, timestamp: Date.now()
     };
+    localStorage.setItem("wd_live_sync", JSON.stringify(localSyncData));
 
-    localStorage.setItem("wd_live_sync", JSON.stringify(syncData));
-
+    // بث المتغيرات كأعمدة منفصلة خفيفة الوزن
     const syncToSupabase = async () => {
       try {
         await supabase.from("wd_rooms").upsert({
           room_code: roomCode,
-          live_sync: syncData,
+          game_state: gameState,
+          team1_name: team1Name,
+          team2_name: team2Name,
+          score1: score1,
+          score2: score2,
+          turn: turn,
+          timer: timer,
+          current_country_id: selectedCountry?.id || null,
+          active_question: selectedCountry?.activeQuestion || null,
+          team1_choice: team1Choice,
+          team2_choice: team2Choice,
+          show_result: showResult,
+          is_attacking: isAttacking,
+          is_question_revealed: isQuestionRevealed,
+          cards1: cards1,
+          cards2: cards2,
+          protected_countries: protectedCountries,
+          challenges_used1: challengesUsed1,
+          challenges_used2: challengesUsed2,
+          map_position: mapPosition,
+          capitals: capitals,
+          stolen_capital_alert: stolenCapitalAlert,
+          countries: cleanCountries,
           created_at: new Date().toISOString()
         });
       } catch (e) {
