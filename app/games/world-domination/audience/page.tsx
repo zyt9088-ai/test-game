@@ -93,6 +93,11 @@ export default function WorldDominationAudience() {
     // دالة ذكية لتجميع الأعمدة المنفصلة وتحويلها للهيكل اللي تفهمه شاشتك بدون تكسير للكود
     const mapColumnsToLiveData = (dbRow: any) => {
       if (!dbRow) return null;
+      
+      const foundCountry = dbRow.countries?.find(
+        (c: any) => c.id === dbRow.current_country_id || c.code === dbRow.current_country_id
+      ) || {};
+
       return {
         gameState: dbRow.game_state,
         team1Name: dbRow.team1_name,
@@ -102,11 +107,7 @@ export default function WorldDominationAudience() {
         turn: dbRow.turn,
         timer: dbRow.timer,
         selectedCountry: dbRow.current_country_id ? {
-          id: dbRow.current_country_id,
-          name: dbRow.countries?.find((c: any) => c.id === dbRow.current_country_id)?.name || "",
-          isChallenge: dbRow.countries?.find((c: any) => c.id === dbRow.current_country_id)?.isChallenge || false,
-          isStolen: dbRow.countries?.find((c: any) => c.id === dbRow.current_country_id)?.isStolen || false,
-          value: dbRow.countries?.find((c: any) => c.id === dbRow.current_country_id)?.value || 1000,
+          ...foundCountry,
           activeQuestion: dbRow.active_question
         } : null,
         team1Choice: dbRow.team1_choice,

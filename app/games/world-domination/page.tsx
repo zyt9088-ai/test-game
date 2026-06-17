@@ -205,7 +205,7 @@ export default function WorldDominationGame() {
           score2: score2,
           turn: turn,
           timer: timer,
-          current_country_id: selectedCountry?.id || null,
+          current_country_id: selectedCountry?.id || selectedCountry?.code || null,
           active_question: selectedCountry?.activeQuestion || null,
           team1_choice: team1Choice,
           team2_choice: team2Choice,
