@@ -32,6 +32,7 @@ import {
   Shuffle,
   CheckCircle2,
   Crosshair,
+  HelpCircle,
 } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 
@@ -67,8 +68,9 @@ const TankIcon = ({
   </svg>
 );
 
+// إخفاء السكرول بشكل كامل مع إبقاء إمكانية السحب (ستايل تطبيقات الجوال العصرية)
 const modernScrollbar =
-  "[&::-webkit-scrollbar]:w-1.5 lg:[&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-slate-100 dark:[&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-thumb]:bg-slate-300 dark:[&::-webkit-scrollbar-thumb]:bg-slate-600 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 dark:hover:[&::-webkit-scrollbar-thumb]:bg-slate-500";
+  "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]";
 
 export default function WorldDominationGame() {
   const supabase = createBrowserClient(
@@ -148,13 +150,35 @@ export default function WorldDominationGame() {
   const [quickProtectTeam, setQuickProtectTeam] = useState<1 | 2 | null>(null);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
+  // نظام النوافذ المنبثقة الذكية (Modals)
+  const [dialog, setDialog] = useState<{
+    isOpen: boolean;
+    type: "alert" | "confirm";
+    message: string;
+    onConfirm?: () => void;
+  }>({ isOpen: false, type: "alert", message: "" });
+
+  const showAlert = (msg: string) => setDialog({ isOpen: true, type: "alert", message: msg });
+  const showConfirm = (msg: string, onConfirm: () => void) => setDialog({ isOpen: true, type: "confirm", message: msg, onConfirm });
+  const closeDialog = () => setDialog({ ...dialog, isOpen: false });
+
+  const handleGoBack = () => {
+    window.history.back();
+  };
+
+  const handleGoHome = () => {
+    showConfirm("هل أنت متأكد من العودة للرئيسية؟ سيتم تصفير هذه اللعبة ولن تتمكن من إكمالها.", () => {
+      localStorage.removeItem("wd_live_sync");
+      window.location.href = "/";
+    });
+  };
+
   // دالة استرجاع اللعبة فوراً عند فتح أو تحديث الصفحة
   useEffect(() => {
     const savedSession = localStorage.getItem("wd_live_sync");
     if (savedSession) {
       try {
         const parsed = JSON.parse(savedSession);
-        // لا نسترجع اللعبة إلا إذا كانت فعلًا شغالة (تجاوزت اللوبي وما انتهت)
         if (parsed.gameState && parsed.gameState !== "lobby" && parsed.gameState !== "gameOver") {
           setRoomCode(parsed.roomCode);
           setSpiedCountryId(parsed.spiedCountryId || null);
@@ -189,9 +213,9 @@ export default function WorldDominationGame() {
         console.error("فشل استرجاع الجلسة السابقة:", e);
       }
     }
-    // السماح للكود بالبدء في المزامنة بعد التأكد من الاسترجاع
     setIsInitialized(true);
   }, []);
+
   useEffect(() => {
     const initGame = async () => {
       setIsLoading(true);
@@ -205,7 +229,6 @@ export default function WorldDominationGame() {
       }
       
       try {
-        // سحب البيانات من السيرفر مباشرة
         const { data, error } = await supabase.from("wd_settings").select("*");
         if (data && !error) {
           data.forEach((item) => {
@@ -226,13 +249,10 @@ export default function WorldDominationGame() {
   }, [supabase]);
 
   useEffect(() => {
-    // إيقاف المزامنة تماماً حتى نتأكد أننا قرأنا الذاكرة عشان ما نمسح اللعبة بالخطأ
     if (!isInitialized || !roomCode) return;
 
-    // تنظيف مصفوفة الدول من الأسئلة الثقيلة لحماية السيرفر وتقليل الحجم والكوست
     const cleanCountries = countries ? countries.map(({ questions, ...rest }) => rest) : [];
 
-    // حفظ نسخة محليّة كاملة للمتصفح الحالي لضمان استقرار الواجهة
     const localSyncData = {
       roomCode, spiedCountryId,
       gameState, team1Name, team2Name, score1, score2, turn, countries,
@@ -243,7 +263,6 @@ export default function WorldDominationGame() {
     };
     localStorage.setItem("wd_live_sync", JSON.stringify(localSyncData));
 
-    // بث المتغيرات كأعمدة منفصلة خفيفة الوزن
     const syncToSupabase = async () => {
       try {
         await supabase.from("wd_rooms").upsert({
@@ -319,7 +338,7 @@ export default function WorldDominationGame() {
 
   const startGame = () => {
     if (dbCountries.length === 0) {
-      alert("الرجاء إضافة دول من لوحة تحكم الآدمن أولاً!");
+      showAlert("الرجاء إضافة دول من لوحة تحكم الآدمن أولاً!");
       return;
     }
 
@@ -331,7 +350,7 @@ export default function WorldDominationGame() {
 
     if (needed > dbCountries.length) {
       needed = dbCountries.length;
-      alert(
+      showAlert(
         `تنبيه: عدد الدول في البنك (${dbCountries.length}) أقل من المطلوب. سيتم استخدام جميع الدول المتاحة.`
       );
     }
@@ -375,9 +394,7 @@ export default function WorldDominationGame() {
     setStolenCapitalAlert(null);
     setSpiedCountryId(null);
     
-    // مسح الذاكرة القديمة بالكامل عشان نبدأ حرب نظيفة ومستقلة
     localStorage.removeItem("wd_live_sync");
-
     setGameState("setupMap");
   };
 
@@ -401,7 +418,7 @@ export default function WorldDominationGame() {
     const maxAvailable = Math.min(needed, countries.length);
 
     if (active.length !== maxAvailable) {
-      alert(
+      showAlert(
         `يجب تفعيل ${maxAvailable} دولة بالضبط! المفعّل حالياً: ${active.length}`
       );
       return;
@@ -420,7 +437,7 @@ export default function WorldDominationGame() {
   const confirmChallenges = () => {
     const currentChallengeCount = countries.filter((c) => c.isChallenge).length;
     if (currentChallengeCount < challengesCount) {
-      alert(`الرجاء تحديد ${challengesCount} دول لتحدي الحكم قبل المتابعة.`);
+      showAlert(`الرجاء تحديد ${challengesCount} دول لتحدي الحكم قبل المتابعة.`);
       return;
     }
 
@@ -458,7 +475,7 @@ export default function WorldDominationGame() {
       const activeCount = countries.filter((c) => c.isActive).length;
 
       if (!country.isActive && activeCount >= maxAvailable) {
-        alert(
+        showAlert(
           `لقد وصلت للحد الأقصى (${maxAvailable} دولة). ألغِ تفعيل دولة أخرى أولاً.`
         );
         return;
@@ -479,7 +496,7 @@ export default function WorldDominationGame() {
       ).length;
 
       if (!isCurrentlyChallenge && currentChallengeCount >= challengesCount) {
-        alert(`لقد قمت بتحديد ${challengesCount} دول للتحدي بالفعل.`);
+        showAlert(`لقد قمت بتحديد ${challengesCount} دول للتحدي بالفعل.`);
         return;
       }
 
@@ -505,7 +522,7 @@ export default function WorldDominationGame() {
 
     if (gameState === "setupCapitals") {
       if (country.isChallenge) {
-        alert("لا يمكن تعيين دولة تحدي كعاصمة! الرجاء اختيار دولة أساسية.");
+        showAlert("لا يمكن تعيين دولة تحدي كعاصمة! الرجاء اختيار دولة أساسية.");
         return;
       }
       if (turn === 1) {
@@ -526,7 +543,7 @@ export default function WorldDominationGame() {
         setTurn(2);
       } else {
         if (country.id === capitals.team1) {
-          alert("تم اختيار هذه الدولة كعاصمة للفريق الأول! اختر دولة أخرى.");
+          showAlert("تم اختيار هذه الدولة كعاصمة للفريق الأول! اختر دولة أخرى.");
           return;
         }
         setCapitals((prev) => ({ ...prev, team2: country.id }));
@@ -572,7 +589,7 @@ export default function WorldDominationGame() {
     const isOwnCapital =
       country.id === (turn === 1 ? capitals.team1 : capitals.team2);
     if (isOwnCapital) {
-      alert("هذه عاصمتكم الأساسية! 👑\nلا يمكنكم الهجوم عليها.");
+      showAlert("هذه عاصمتكم الأساسية! 👑\nلا يمكنكم الهجوم عليها.");
       return;
     }
 
@@ -608,7 +625,7 @@ export default function WorldDominationGame() {
 
     const currentScore = turn === 1 ? score1 : score2;
     if (currentScore < 1000) {
-      alert("رصيد الفريق غير كافٍ (مطلوب 1000 نقطة) لتغيير السؤال!");
+      showAlert("رصيد الفريق غير كافٍ (مطلوب 1000 نقطة) لتغيير السؤال!");
       return;
     }
 
@@ -617,11 +634,11 @@ export default function WorldDominationGame() {
         (q: any) => q.q !== selectedCountry.activeQuestion?.q
       ) || [];
     if (availableQs.length === 0) {
-      alert("ما فيه أسئلة إضافية مسجلة لهذي الدولة!");
+      showAlert("ما فيه أسئلة إضافية مسجلة لهذي الدولة!");
       return;
     }
 
-    if (confirm("سيتم خصم 1000 نقطة لتغيير السؤال، هل أنت متأكد؟")) {
+    showConfirm("سيتم خصم 1000 نقطة لتغيير السؤال، هل أنت متأكد؟", () => {
       if (turn === 1) setScore1((s) => s - 1000);
       else setScore2((s) => s - 1000);
 
@@ -634,7 +651,7 @@ export default function WorldDominationGame() {
       setIsTimerRunning(false);
       setIsQuestionRevealed(false);
       setForcedWinner(null);
-    }
+    });
   };
 
   const handleRefereeChangeQuestion = () => {
@@ -645,7 +662,7 @@ export default function WorldDominationGame() {
         (ch) => ch !== selectedCountry.activeQuestion?.q
       );
       if (availableChallenges.length === 0) {
-        alert("لا توجد تحديات إضافية مسجلة في البنك!");
+        showAlert("لا توجد تحديات إضافية مسجلة في البنك!");
         return;
       }
       const newChallenge =
@@ -662,7 +679,7 @@ export default function WorldDominationGame() {
           (q: any) => q.q !== selectedCountry.activeQuestion?.q
         ) || [];
       if (availableQs.length === 0) {
-        alert("لا توجد أسئلة إضافية مسجلة لهذه الدولة!");
+        showAlert("لا توجد أسئلة إضافية مسجلة لهذه الدولة!");
         return;
       }
       const newQ = availableQs[Math.floor(Math.random() * availableQs.length)];
@@ -684,7 +701,7 @@ export default function WorldDominationGame() {
   };
 
   const handleManualFree = () => {
-    if (confirm(`هل أنت متأكد من سحب هذه الدولة وجعلها حرة للجميع؟`)) {
+    showConfirm(`هل أنت متأكد من سحب هذه الدولة وجعلها حرة للجميع؟`, () => {
       const updated = countries.map((c) => {
         if (c.id === selectedCountry.id) {
           if (c.owner === 1) setScore1((s) => Math.max(0, s - c.value));
@@ -708,7 +725,7 @@ export default function WorldDominationGame() {
       setIsAttacking(false);
       setIsQuestionRevealed(false);
       setForcedWinner(null);
-    }
+    });
   };
 
   const useCaptureCard = () => {
@@ -718,66 +735,65 @@ export default function WorldDominationGame() {
 
     if (isOpponentCapital) {
       if (currentCards.capitalCapture <= 0) {
-        alert("لقد استنفذ الفريق جميع بطاقات غزو العاصمة!");
+        showAlert("لقد استنفذ الفريق جميع بطاقات غزو العاصمة!");
         return;
       }
       if ((turn === 1 ? score1 : score2) <= 6000) {
-        alert("رصيدكم لا يتجاوز 6000 نقطة! لا يمكنكم الهجوم على عاصمة الخصم.");
+        showAlert("رصيدكم لا يتجاوز 6000 نقطة! لا يمكنكم الهجوم على عاصمة الخصم.");
         return;
       }
     } else {
       if (currentCards.capture <= 0) {
-        alert("لقد استنفذ الفريق جميع بطاقات الاستحلال (الدبابة)!");
+        showAlert("لقد استنفذ الفريق جميع بطاقات الاستحلال (الدبابة)!");
         return;
       }
     }
 
-    if (
-      confirm(
-        `سيتم خصم بطاقة ${isOpponentCapital ? "غزو العاصمة" : "استحلال"} وبدء الهجوم الأبدي، هل أنت متأكد؟`
-      )
-    ) {
-      if (turn === 1) {
-        if (isOpponentCapital)
-          setCards1((prev: any) => ({
-            ...prev,
-            capitalCapture: prev.capitalCapture - 1,
-          }));
-        else setCards1((prev: any) => ({ ...prev, capture: prev.capture - 1 }));
-      } else {
-        if (isOpponentCapital)
-          setCards2((prev: any) => ({
-            ...prev,
-            capitalCapture: prev.capitalCapture - 1,
-          }));
-        else setCards2((prev: any) => ({ ...prev, capture: prev.capture - 1 }));
-      }
-
-      const updatedCountries = countries.map((c) => {
-        if (c.id === selectedCountry.id) {
-          return { ...c, owner: null, lastOwner: c.owner };
+    showConfirm(
+      `سيتم خصم بطاقة ${isOpponentCapital ? "غزو العاصمة" : "استحلال"} وبدء الهجوم الأبدي، هل أنت متأكد؟`,
+      () => {
+        if (turn === 1) {
+          if (isOpponentCapital)
+            setCards1((prev: any) => ({
+              ...prev,
+              capitalCapture: prev.capitalCapture - 1,
+            }));
+          else setCards1((prev: any) => ({ ...prev, capture: prev.capture - 1 }));
+        } else {
+          if (isOpponentCapital)
+            setCards2((prev: any) => ({
+              ...prev,
+              capitalCapture: prev.capitalCapture - 1,
+            }));
+          else setCards2((prev: any) => ({ ...prev, capture: prev.capture - 1 }));
         }
-        return c;
-      });
 
-      setCountries(updatedCountries);
-      setIsAttacking(true);
-      setIsQuestionRevealed(false);
+        const updatedCountries = countries.map((c) => {
+          if (c.id === selectedCountry.id) {
+            return { ...c, owner: null, lastOwner: c.owner };
+          }
+          return c;
+        });
 
-      let activeQ = selectedCountry.activeQuestion;
-      if (!selectedCountry.isChallenge) {
-        activeQ =
-          selectedCountry.questions?.[
-            Math.floor(Math.random() * selectedCountry.questions.length)
-          ];
+        setCountries(updatedCountries);
+        setIsAttacking(true);
+        setIsQuestionRevealed(false);
+
+        let activeQ = selectedCountry.activeQuestion;
+        if (!selectedCountry.isChallenge) {
+          activeQ =
+            selectedCountry.questions?.[
+              Math.floor(Math.random() * selectedCountry.questions.length)
+            ];
+        }
+        setSelectedCountry({
+          ...selectedCountry,
+          owner: null,
+          lastOwner: selectedCountry.owner,
+          activeQuestion: activeQ,
+        });
       }
-      setSelectedCountry({
-        ...selectedCountry,
-        owner: null,
-        lastOwner: selectedCountry.owner,
-        activeQuestion: activeQ,
-      });
-    }
+    );
   };
 
   const useAirStrike = () => {
@@ -786,12 +802,12 @@ export default function WorldDominationGame() {
       selectedCountry.id === (turn === 1 ? capitals.team2 : capitals.team1);
 
     if (currentCards.airStrike <= 0) {
-      alert("لقد استنفذ الفريق جميع بطاقات القصف (صاروخ)!");
+      showAlert("لقد استنفذ الفريق جميع بطاقات القصف (صاروخ)!");
       return;
     }
 
     if (isOpponentCapital) {
-      alert(
+      showAlert(
         "ممنوع! لا يمكن قصف العاصمة بالصواريخ. يجب الهجوم عليها بالمواجهة المباشرة (الاستحلال) وفقط إذا كان رصيدك فوق 6000 نقطة."
       );
       return;
@@ -800,60 +816,58 @@ export default function WorldDominationGame() {
     const isProtected = protectedCountries[selectedCountry.id];
 
     if (isProtected) {
-      if (
-        confirm(
-          "هذه الدولة محمية! القصف سيكسر درع الحماية فقط دون خصم نقاط الدولة أو رصيد المدافع. هل أنت متأكد؟"
-        )
-      ) {
-        if (turn === 1) {
-          setCards1((prev: any) => ({ ...prev, airStrike: prev.airStrike - 1 }));
-        } else {
-          setCards2((prev: any) => ({ ...prev, airStrike: prev.airStrike - 1 }));
-        }
-
-        setProtectedCountries((prev: any) => {
-          const next = { ...prev };
-          delete next[selectedCountry.id];
-          return next;
-        });
-
-        setSelectedCountry(null);
-      }
-    } else {
-      if (
-        confirm(
-          `القصف المدمر! سيتم خصم بطاقة قصف، وسيتم خصم نصف قيمة الدولة (${Math.floor(selectedCountry.value / 2)}) من رصيد المدافع ومن قيمة الدولة نفسها، ولن تتحرر الدولة. هل أنت متأكد؟`
-        )
-      ) {
-        if (turn === 1) {
-          setCards1((prev: any) => ({ ...prev, airStrike: prev.airStrike - 1 }));
-        } else {
-          setCards2((prev: any) => ({ ...prev, airStrike: prev.airStrike - 1 }));
-        }
-
-        const penalty = Math.floor(selectedCountry.value / 2);
-        if (selectedCountry.owner === 1)
-          setScore1((s) => Math.max(0, s - penalty));
-        if (selectedCountry.owner === 2)
-          setScore2((s) => Math.max(0, s - penalty));
-
-        const updatedCountries = countries.map((c) => {
-          if (c.id === selectedCountry.id) {
-            return { ...c, value: Math.max(0, c.value - penalty) };
+      showConfirm(
+        "هذه الدولة محمية! القصف سيكسر درع الحماية فقط دون خصم نقاط الدولة أو رصيد المدافع. هل أنت متأكد؟",
+        () => {
+          if (turn === 1) {
+            setCards1((prev: any) => ({ ...prev, airStrike: prev.airStrike - 1 }));
+          } else {
+            setCards2((prev: any) => ({ ...prev, airStrike: prev.airStrike - 1 }));
           }
-          return c;
-        });
 
-        setCountries(updatedCountries);
-        setSelectedCountry(null);
-      }
+          setProtectedCountries((prev: any) => {
+            const next = { ...prev };
+            delete next[selectedCountry.id];
+            return next;
+          });
+
+          setSelectedCountry(null);
+        }
+      );
+    } else {
+      showConfirm(
+        `القصف المدمر! سيتم خصم بطاقة قصف، وسيتم خصم نصف قيمة الدولة (${Math.floor(selectedCountry.value / 2)}) من رصيد المدافع ومن قيمة الدولة نفسها، ولن تتحرر الدولة. هل أنت متأكد؟`,
+        () => {
+          if (turn === 1) {
+            setCards1((prev: any) => ({ ...prev, airStrike: prev.airStrike - 1 }));
+          } else {
+            setCards2((prev: any) => ({ ...prev, airStrike: prev.airStrike - 1 }));
+          }
+
+          const penalty = Math.floor(selectedCountry.value / 2);
+          if (selectedCountry.owner === 1)
+            setScore1((s) => Math.max(0, s - penalty));
+          if (selectedCountry.owner === 2)
+            setScore2((s) => Math.max(0, s - penalty));
+
+          const updatedCountries = countries.map((c) => {
+            if (c.id === selectedCountry.id) {
+              return { ...c, value: Math.max(0, c.value - penalty) };
+            }
+            return c;
+          });
+
+          setCountries(updatedCountries);
+          setSelectedCountry(null);
+        }
+      );
     }
   };
 
   const useProtectCard = () => {
     const currentCards = turn === 1 ? cards1 : cards2;
     if (currentCards.protect <= 0) {
-      alert("انتهت بطاقات الحماية (الدرع)!");
+      showAlert("انتهت بطاقات الحماية (الدرع)!");
       return;
     }
 
@@ -865,16 +879,14 @@ export default function WorldDominationGame() {
       ...prev,
       [selectedCountry.id]: true,
     }));
-    alert(
-      "تم تفعيل الحماية! الدولة أصبحت محصنة ضد الدبابات (لكنها لا تزال معرضة للقصف)."
-    );
+    showAlert("تم تفعيل الحماية! الدولة أصبحت محصنة ضد الدبابات (لكنها لا تزال معرضة للقصف).");
     if (!showResult) setSelectedCountry(null);
   };
 
   const handleSpyAction = (teamId: 1 | 2) => {
     const currentCards = teamId === 1 ? cards1 : cards2;
     if (currentCards.spy <= 0) {
-      alert("لقد استنفذ الفريق جميع بطاقات التجسس!");
+      showAlert("لقد استنفذ الفريق جميع بطاقات التجسس!");
       return;
     }
 
@@ -883,20 +895,22 @@ export default function WorldDominationGame() {
     );
 
     if (hidden2000Countries.length === 0) {
-      alert("لا توجد دول حرة بقيمة 2000 نقطة حالياً على الخريطة.");
+      showAlert("لا يوجد دولة متاحة");
       return;
     }
 
     const randomCountry =
       hidden2000Countries[Math.floor(Math.random() * hidden2000Countries.length)];
 
-    if (confirm(`سيتم تفعيل التجسس لفريق ${teamId === 1 ? team1Name : team2Name} وكشف دولة 2000. متأكد؟`)) {
+    showConfirm(`سيتم تفعيل التجسس لفريق ${teamId === 1 ? team1Name : team2Name} وكشف دولة 2000 وإجباره على الهجوم عليها. متأكد؟`, () => {
       if (teamId === 1) setCards1((p: any) => ({ ...p, spy: p.spy - 1 }));
       else setCards2((p: any) => ({ ...p, spy: p.spy - 1 }));
       
       setSpiedCountryId(randomCountry.id);
-      alert(`🕵️ تمت العملية بنجاح!\nالدولة المكتشفة هي: ${randomCountry.name}\n(ستظهر أيقونة نيشان 🎯 فوقها في الخريطة)`);
-    }
+      setSelectedCountry(randomCountry);
+      setIsAttacking(true);
+      showAlert(`🕵️ تمت العملية بنجاح!\nتم اكتشاف ${randomCountry.name} وإجبار الفريق على اختيارها.`);
+    });
   };
 
   const handleConfirmAnswers = () => {
@@ -908,7 +922,7 @@ export default function WorldDominationGame() {
     if (isAttacking) {
       const attackerChoice = turn === 1 ? team1Choice : team2Choice;
       if (!attackerChoice) {
-        alert("لازم تختار إجابة الفريق المهاجم أولاً!");
+        showAlert("لازم تختار إجابة الفريق المهاجم أولاً!");
         return;
       }
       setShowResult(true);
@@ -917,7 +931,7 @@ export default function WorldDominationGame() {
     }
 
     if (!team1Choice || !team2Choice) {
-      alert("لازم تختار إجابة الفريقين أولاً عشان تعتمد النتيجة!");
+      showAlert("لازم تختار إجابة الفريقين أولاً عشان تعتمد النتيجة!");
       return;
     }
 
@@ -1033,7 +1047,7 @@ export default function WorldDominationGame() {
         );
         if (turn === 1) finalScore1 = Math.max(0, finalScore1 - penalty);
         else finalScore2 = Math.max(0, finalScore2 - penalty);
-        alert(
+        showAlert(
           `إجابة خاطئة! تم معاقبة المهاجم بخصم ${penalty} نقطة (ثلث نقاط الخصم) من رصيده.`
         );
       } else {
@@ -1042,7 +1056,7 @@ export default function WorldDominationGame() {
           finalScore1 = Math.max(0, finalScore1 - penalty);
         if (selectedCountry.lastOwner === 2)
           finalScore2 = Math.max(0, finalScore2 - penalty);
-        alert(
+        showAlert(
           `فشل الاستحلال! تم معاقبة المدافع بخصم ${penalty} نقطة (نصف قيمة الدولة) من رصيده.`
         );
       }
@@ -1216,12 +1230,20 @@ export default function WorldDominationGame() {
       {/* المحتوى الرئيسي */}
       <div className="max-w-7xl mx-auto w-full flex flex-col h-full flex-1">
         <div className="flex justify-between items-center mb-4 lg:mb-6 shrink-0 z-50">
-          <Link
-            href="/"
-            className="px-3 py-1.5 lg:px-4 lg:py-2 bg-rose-500 text-white rounded-xl flex items-center gap-1.5 lg:gap-2 font-black text-[10px] lg:text-xs shadow-sm"
-          >
-            <ArrowRight size={14} className="lg:w-4 lg:h-4" /> رجوع
-          </Link>
+          <div className="flex gap-2">
+            <button
+              onClick={handleGoHome}
+              className="px-3 py-1.5 lg:px-4 lg:py-2 bg-rose-500 hover:bg-rose-400 text-white rounded-xl flex items-center gap-1.5 lg:gap-2 font-black text-[10px] lg:text-xs border-b-4 border-rose-700 active:border-b-0 active:translate-y-[4px] transition-all"
+            >
+              الرئيسية
+            </button>
+            <button
+              onClick={handleGoBack}
+              className="px-3 py-1.5 lg:px-4 lg:py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-xl flex items-center gap-1.5 lg:gap-2 font-black text-[10px] lg:text-xs border-b-4 border-slate-800 active:border-b-0 active:translate-y-[4px] transition-all"
+            >
+              <ArrowRight size={14} className="lg:w-4 lg:h-4" /> رجوع
+            </button>
+          </div>
 
           {gameState === "playing" && (
             <div className="flex items-center gap-2 lg:gap-4 bg-white dark:bg-slate-900 px-3 py-1.5 lg:px-6 lg:py-2 rounded-xl lg:rounded-2xl border-2 border-slate-200 dark:border-slate-800 shadow-sm">
@@ -1256,10 +1278,10 @@ export default function WorldDominationGame() {
 
           <button
             onClick={() => {
-              if (!roomCode) alert("الرجاء بدء اللعبة أولاً لتوليد كود الغرفة!");
+              if (!roomCode) showAlert("الرجاء بدء اللعبة أولاً لتوليد كود الغرفة!");
               else setShowAudienceModal(true);
             }}
-            className="px-3 py-1.5 lg:px-4 lg:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center gap-1.5 lg:gap-2 font-black text-[10px] lg:text-xs shadow-sm transition-colors"
+            className="px-3 py-1.5 lg:px-4 lg:py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center gap-1.5 lg:gap-2 font-black text-[10px] lg:text-xs border-b-4 border-blue-800 active:border-b-0 active:translate-y-[4px] transition-all"
           >
             <MonitorPlay size={14} className="lg:w-4 lg:h-4" />{" "}
             <span className="hidden sm:inline">شاشة الجمهور</span>
@@ -1930,7 +1952,7 @@ export default function WorldDominationGame() {
                   setForcedWinner(null);
                   setSpiedCountryId(null);
                 }}
-                className="px-6 py-2.5 lg:px-12 lg:py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black text-sm lg:text-xl rounded-2xl shadow-lg flex items-center gap-2 lg:gap-3 transition-all active:scale-95 border-2 border-amber-600/50"
+                className="px-6 py-2.5 lg:px-12 lg:py-4 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black text-sm lg:text-xl rounded-2xl shadow-lg flex items-center gap-2 lg:gap-3 transition-all active:scale-95 border-b-4 border-amber-700 active:border-b-0 active:translate-y-[4px]"
               >
                 <ArrowLeftRight size={20} className="lg:w-[28px] lg:h-[28px]" />
                 تمرير الدور إلى: {turn === 1 ? team2Name : team1Name}
@@ -1959,12 +1981,12 @@ export default function WorldDominationGame() {
                             <Geographies geography={geoUrl}>
                               {({ geographies }) => (
                                 <>
-                                  {/* 1. رسم وتلوين الدول (مع صب دولة التجسس بالبرتقالي مباشرة) */}
+                                  {/* 1. رسم وتلوين الدول */}
                                   {geographies.map((geo) => {
                                     const country = countries.find((c) => c.geoId === geo.id);
                                     let fillColor = "#cbd5e1";
                                     if (country) {
-                                      if (spiedCountryId === country.id) fillColor = "#f97316"; // تلوين دولة التجسس بالبرتقالي المميز
+                                      if (spiedCountryId === country.id) fillColor = "#f97316";
                                       else if (country.owner === 1) fillColor = "#06b6d4";
                                       else if (country.owner === 2) fillColor = "#f43f5e";
                                       else if (country.isChallenge) fillColor = "#a855f7";
@@ -1983,7 +2005,7 @@ export default function WorldDominationGame() {
                                     );
                                   })}
                                   
-                                  {/* 2. رسم الأسماء والأيقونات الأخرى (تم نسف النيشان المرتفع) */}
+                                  {/* 2. رسم الأسماء والأيقونات */}
                                   {geographies.map((geo) => {
                                     const country = countries.find((c) => c.geoId === geo.id);
                                     if (!country) return null;
@@ -2045,7 +2067,7 @@ export default function WorldDominationGame() {
         )}
       </div>
 
-      {/* نافذة السؤال وأدوات الحكم (Option 3: Modal/Overlay) */}
+      {/* نافذة السؤال وأدوات الحكم */}
       {selectedCountry && gameState === "playing" && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4 bg-slate-900/30">
           <div
@@ -2081,7 +2103,7 @@ export default function WorldDominationGame() {
                   !selectedCountry.isChallenge && (
                     <button
                       onClick={handleChangeQuestion}
-                      className="px-2 lg:px-4 py-1 lg:py-2 bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900 dark:text-amber-300 font-bold text-[10px] lg:text-sm rounded-lg lg:rounded-xl transition-colors flex items-center gap-1 lg:gap-2"
+                      className="px-2 lg:px-4 py-1 lg:py-2 bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900 dark:text-amber-300 font-bold text-[10px] lg:text-sm rounded-lg lg:rounded-xl transition-colors flex items-center gap-1 lg:gap-2 border-b-4 border-amber-300 dark:border-amber-700 active:border-b-0 active:translate-y-[4px]"
                     >
                       <RefreshCw size={12} className="lg:w-[16px] lg:h-[16px]" />{" "}
                       <span className="hidden sm:inline">تغيير السؤال (1000)</span>
@@ -2111,7 +2133,7 @@ export default function WorldDominationGame() {
                   {!selectedCountry.activeQuestion && !isAttacking ? (
                     <button
                       onClick={handleConfirmAnswers}
-                      className="w-full py-6 lg:py-8 bg-blue-600 text-white rounded-2xl font-black text-lg lg:text-2xl"
+                      className="w-full py-6 lg:py-8 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-lg lg:text-2xl border-b-4 border-blue-800 active:border-b-0 active:translate-y-[4px] transition-all"
                     >
                       سحب سؤال للدولة
                     </button>
@@ -2120,7 +2142,7 @@ export default function WorldDominationGame() {
                       {!isQuestionRevealed && (
                         <button
                           onClick={() => setIsQuestionRevealed(true)}
-                          className="w-full py-2.5 lg:py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs lg:text-lg rounded-xl shadow-md transition-all mb-2"
+                          className="w-full py-2.5 lg:py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs lg:text-lg rounded-xl shadow-md transition-all mb-2 border-b-4 border-indigo-800 active:border-b-0 active:translate-y-[4px]"
                         >
                           إظهار السؤال للجمهور
                         </button>
@@ -2184,7 +2206,7 @@ export default function WorldDominationGame() {
                         !showResult) && (
                           <button
                             onClick={handleConfirmAnswers}
-                            className="w-full py-2.5 lg:py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs lg:text-lg rounded-xl shadow-md transition-all mt-2"
+                            className="w-full py-2.5 lg:py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-black text-xs lg:text-lg rounded-xl shadow-md transition-all mt-2 border-b-4 border-emerald-700 active:border-b-0 active:translate-y-[4px]"
                           >
                             اعتماد الإجابات وإظهار النتيجة
                           </button>
@@ -2251,7 +2273,7 @@ export default function WorldDominationGame() {
                                     <div className="flex flex-col gap-2">
                                       <button
                                         onClick={() => handleCapture(winner!)}
-                                        className="w-full py-2.5 lg:py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs lg:text-base rounded-xl shadow-md transition-all"
+                                        className="w-full py-2.5 lg:py-3 bg-emerald-500 hover:bg-emerald-400 text-white font-black text-xs lg:text-base rounded-xl shadow-md transition-all border-b-4 border-emerald-700 active:border-b-0 active:translate-y-[4px]"
                                       >
                                         تأكيد ومتابعة (بدون حماية)
                                       </button>
@@ -2275,7 +2297,7 @@ export default function WorldDominationGame() {
                                             }));
                                             handleCapture(winner!);
                                           }}
-                                          className="w-full py-2.5 lg:py-3 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs lg:text-base rounded-xl shadow-md transition-all"
+                                          className="w-full py-2.5 lg:py-3 bg-teal-600 hover:bg-teal-500 text-white font-black text-xs lg:text-base rounded-xl shadow-md transition-all border-b-4 border-teal-800 active:border-b-0 active:translate-y-[4px]"
                                         >
                                           تأكيد ومتابعة + تفعيل حماية فورية
                                           (بطاقة)
@@ -2295,7 +2317,7 @@ export default function WorldDominationGame() {
                                     </p>
                                     <button
                                       onClick={handleMiss}
-                                      className="w-full py-2.5 lg:py-3 bg-slate-500 hover:bg-slate-600 text-white font-black text-xs lg:text-base rounded-xl shadow-md transition-all"
+                                      className="w-full py-2.5 lg:py-3 bg-slate-500 hover:bg-slate-400 text-white font-black text-xs lg:text-base rounded-xl shadow-md transition-all border-b-4 border-slate-700 active:border-b-0 active:translate-y-[4px]"
                                     >
                                       تأكيد وتطبيق العقوبة
                                     </button>
@@ -2319,7 +2341,7 @@ export default function WorldDominationGame() {
                               onClick={() => {
                                 setShowResult(true);
                               }}
-                              className="py-1.5 lg:py-2.5 px-4 lg:px-6 bg-purple-600 text-white rounded-lg font-black text-[10px] lg:text-sm"
+                              className="py-1.5 lg:py-2.5 px-4 lg:px-6 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-black text-[10px] lg:text-sm border-b-4 border-purple-800 active:border-b-0 active:translate-y-[4px] transition-all"
                             >
                               بدء تنفيذ التحدي
                             </button>
@@ -2330,7 +2352,7 @@ export default function WorldDominationGame() {
                         {!isTimerRunning && timer === 20 ? (
                           <button
                             onClick={() => setIsTimerRunning(true)}
-                            className="py-2 lg:py-3 px-6 lg:px-8 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black text-xs lg:text-base rounded-xl shadow-md inline-flex items-center gap-2"
+                            className="py-2 lg:py-3 px-6 lg:px-8 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-xs lg:text-base rounded-xl shadow-md inline-flex items-center gap-2 border-b-4 border-amber-700 active:border-b-0 active:translate-y-[4px] transition-all"
                           >
                             <Play size={16} /> بدء المؤقت (للجمهور)
                           </button>
@@ -2427,12 +2449,10 @@ export default function WorldDominationGame() {
                             </button>
                             <button
                               onClick={() => {
-                                if (
-                                  confirm(
+                                showConfirm(
                                     `هل أنت متأكد من إجبار فوز ${team1Name}؟`,
+                                    () => setForcedWinner(1)
                                   )
-                                )
-                                  setForcedWinner(1);
                               }}
                               className="py-2 lg:py-2.5 bg-cyan-100 hover:bg-cyan-200 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 rounded-lg text-[10px] lg:text-xs font-bold transition-colors"
                             >
@@ -2440,12 +2460,10 @@ export default function WorldDominationGame() {
                             </button>
                             <button
                               onClick={() => {
-                                if (
-                                  confirm(
+                                showConfirm(
                                     `هل أنت متأكد من إجبار فوز ${team2Name}؟`,
+                                    () => setForcedWinner(2)
                                   )
-                                )
-                                  setForcedWinner(2);
                               }}
                               className="py-2 lg:py-2.5 bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-lg text-[10px] lg:text-xs font-bold transition-colors"
                             >
@@ -2507,7 +2525,7 @@ export default function WorldDominationGame() {
                                         setCards1((p: any) => ({
                                           ...p,
                                           protect: p.protect - 1,
-                                       }));
+                                        }));
                                       else
                                         setCards2((p: any) => ({
                                           ...p,
@@ -2542,12 +2560,10 @@ export default function WorldDominationGame() {
                             </button>
                             <button
                               onClick={() => {
-                                if (
-                                  confirm(
+                                showConfirm(
                                     `هل أنت متأكد من إجبار فوز ${team1Name}؟`,
+                                    () => setForcedWinner(1)
                                   )
-                                )
-                                  setForcedWinner(1);
                               }}
                               className="py-2 lg:py-2.5 bg-cyan-100 hover:bg-cyan-200 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 rounded-lg text-[10px] lg:text-xs font-bold transition-colors"
                             >
@@ -2555,12 +2571,10 @@ export default function WorldDominationGame() {
                             </button>
                             <button
                               onClick={() => {
-                                if (
-                                  confirm(
+                                showConfirm(
                                     `هل أنت متأكد من إجبار فوز ${team2Name}؟`,
+                                    () => setForcedWinner(2)
                                   )
-                                )
-                                  setForcedWinner(2);
                               }}
                               className="py-2 lg:py-2.5 bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-lg text-[10px] lg:text-xs font-bold transition-colors"
                             >
@@ -2595,7 +2609,7 @@ export default function WorldDominationGame() {
                     !isOpponentCapital && (
                       <button
                         onClick={useCaptureCard}
-                        className="px-4 py-3 lg:px-6 lg:py-5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl lg:rounded-2xl font-black shadow-md w-full flex items-center justify-center gap-2 transition-colors text-xs lg:text-lg"
+                        className="px-4 py-3 lg:px-6 lg:py-5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl lg:rounded-2xl font-black shadow-md w-full flex items-center justify-center gap-2 border-b-4 border-purple-800 active:border-b-0 active:translate-y-[4px] transition-all text-xs lg:text-lg"
                       >
                         <TankIcon size={18} /> بدء الاستحلال الأبدي
                       </button>
@@ -2607,7 +2621,7 @@ export default function WorldDominationGame() {
                     isOpponentCapital && (
                       <button
                         onClick={useCaptureCard}
-                        className="px-4 py-3 lg:px-6 lg:py-5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl lg:rounded-2xl font-black shadow-md w-full flex items-center justify-center gap-2 transition-colors text-xs lg:text-lg"
+                        className="px-4 py-3 lg:px-6 lg:py-5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl lg:rounded-2xl font-black shadow-md w-full flex items-center justify-center gap-2 border-b-4 border-amber-800 active:border-b-0 active:translate-y-[4px] transition-all text-xs lg:text-lg"
                       >
                         <Crown size={18} /> غزو العاصمة الأبدي
                       </button>
@@ -2618,7 +2632,7 @@ export default function WorldDominationGame() {
                     !isOpponentCapital && (
                       <button
                         onClick={useAirStrike}
-                        className="px-4 py-3 lg:px-6 lg:py-5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl lg:rounded-2xl font-black shadow-md w-full flex items-center justify-center gap-2 transition-colors text-[10px] lg:text-base"
+                        className="px-4 py-3 lg:px-6 lg:py-5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl lg:rounded-2xl font-black shadow-md w-full flex items-center justify-center gap-2 border-b-4 border-orange-800 active:border-b-0 active:translate-y-[4px] transition-all text-[10px] lg:text-base"
                       >
                         <Rocket size={18} /> قصف مدمر (- نصف الدولة)
                       </button>
@@ -2664,7 +2678,7 @@ export default function WorldDominationGame() {
               !protectedCountries[selectedCountry.id] && (
                 <button
                   onClick={useProtectCard}
-                  className="px-4 py-3 lg:px-6 lg:py-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl lg:rounded-2xl font-black shadow-md w-full flex items-center justify-center gap-2 transition-colors text-xs lg:text-lg"
+                  className="px-4 py-3 lg:px-6 lg:py-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl lg:rounded-2xl font-black shadow-md w-full flex items-center justify-center gap-2 border-b-4 border-emerald-800 active:border-b-0 active:translate-y-[4px] transition-all text-xs lg:text-lg"
                 >
                   <Shield size={18} /> تفعيل بطاقة الحماية (درع دائم)
                 </button>
@@ -2749,8 +2763,7 @@ export default function WorldDominationGame() {
                   </button>
                   <button
                     onClick={() => {
-                      if (confirm(`هل أنت متأكد من إجبار فوز ${team1Name}؟`))
-                        setForcedWinner(1);
+                      showConfirm(`هل أنت متأكد من إجبار فوز ${team1Name}؟`, () => setForcedWinner(1));
                     }}
                     className="py-2 lg:py-2.5 bg-cyan-100 hover:bg-cyan-200 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 rounded-lg text-[10px] lg:text-xs font-bold transition-colors"
                   >
@@ -2758,8 +2771,7 @@ export default function WorldDominationGame() {
                   </button>
                   <button
                     onClick={() => {
-                      if (confirm(`هل أنت متأكد من إجبار فوز ${team2Name}؟`))
-                        setForcedWinner(2);
+                      showConfirm(`هل أنت متأكد من إجبار فوز ${team2Name}؟`, () => setForcedWinner(2));
                     }}
                     className="py-2 lg:py-2.5 bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-lg text-[10px] lg:text-xs font-bold transition-colors"
                   >
@@ -2809,12 +2821,51 @@ export default function WorldDominationGame() {
             <button
               onClick={() => {
                 navigator.clipboard.writeText(audienceUrl);
-                alert("تم نسخ الرابط بنجاح! ✅");
+                showAlert("تم نسخ الرابط بنجاح! ✅");
               }}
               className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl transition-colors text-sm"
             >
               نسخ الرابط
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* نافذة التنبيهات العصرية 3D */}
+      {dialog.isOpen && (
+        <div className="fixed inset-0 z-[9999] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 lg:p-8 max-w-sm w-full border-b-4 border-blue-500 text-center shadow-2xl animate-in zoom-in-95 relative">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-4">
+              {dialog.type === "alert" ? (
+                <Shield className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              ) : (
+                <HelpCircle className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              )}
+            </div>
+            <p className="text-slate-800 dark:text-slate-200 font-black text-lg mb-6 leading-relaxed whitespace-pre-line">
+              {dialog.message}
+            </p>
+            <div className="flex gap-3 justify-center">
+              {dialog.type === "confirm" && (
+                <button
+                  onClick={closeDialog}
+                  className="flex-1 py-3 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-300 rounded-xl font-black transition-colors border-b-4 border-slate-300 dark:border-slate-900 active:border-b-0 active:translate-y-[4px]"
+                >
+                  إلغاء
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (dialog.type === "confirm" && dialog.onConfirm) {
+                    dialog.onConfirm();
+                  }
+                  closeDialog();
+                }}
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black transition-colors shadow-md border-b-4 border-blue-800 active:border-b-0 active:translate-y-[4px]"
+              >
+                {dialog.type === "confirm" ? "تأكيد" : "حسناً"}
+              </button>
+            </div>
           </div>
         </div>
       )}

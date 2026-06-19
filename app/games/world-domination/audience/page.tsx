@@ -22,6 +22,7 @@ import {
   HelpCircle,
   Moon,
   Sun,
+  Crosshair,
 } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 
@@ -58,7 +59,7 @@ const TankIcon = ({
 );
 
 const modernScrollbar =
-  "[&::-webkit-scrollbar]:w-1.5 lg:[&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-slate-100 dark:[&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-thumb]:bg-slate-300 dark:[&::-webkit-scrollbar-thumb]:bg-slate-600 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 dark:hover:[&::-webkit-scrollbar-thumb]:bg-slate-500";
+  "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]";
 
 export default function WorldDominationAudience() {
   const supabase = createBrowserClient(
@@ -90,7 +91,6 @@ export default function WorldDominationAudience() {
   useEffect(() => {
     if (!roomCode) return;
 
-    // دالة ذكية لتجميع الأعمدة المنفصلة وتحويلها للهيكل اللي تفهمه شاشتك بدون تكسير للكود
     const mapColumnsToLiveData = (dbRow: any) => {
       if (!dbRow) return null;
       
@@ -118,6 +118,7 @@ export default function WorldDominationAudience() {
         cards1: dbRow.cards1,
         cards2: dbRow.cards2,
         protectedCountries: dbRow.protected_countries || {},
+        spiedCountryId: dbRow.spied_country_id || null,
         challengesUsed1: dbRow.challenges_used1,
         challengesUsed2: dbRow.challenges_used2,
         mapPosition: dbRow.map_position,
@@ -223,6 +224,7 @@ export default function WorldDominationAudience() {
     capitals = { team1: null, team2: null },
     stolenCapitalAlert = null,
     protectedCountries = {},
+    spiedCountryId = null,
     mapPosition = { center: [0, 0], zoom: 1, name: "العالم" },
   } = liveData;
 
@@ -231,6 +233,7 @@ export default function WorldDominationAudience() {
     protect: liveData.cards1?.protect ?? 5,
     airStrike: liveData.cards1?.airStrike ?? 3,
     capitalCapture: liveData.cards1?.capitalCapture ?? 2,
+    spy: liveData.cards1?.spy ?? 0,
   };
 
   const cards2 = {
@@ -238,6 +241,7 @@ export default function WorldDominationAudience() {
     protect: liveData.cards2?.protect ?? 5,
     airStrike: liveData.cards2?.airStrike ?? 3,
     capitalCapture: liveData.cards2?.capitalCapture ?? 2,
+    spy: liveData.cards2?.spy ?? 0,
   };
 
   const isDraw = score1 === score2;
@@ -359,200 +363,149 @@ export default function WorldDominationAudience() {
         </div>
       )}
 
-      {/* شاشة السؤال المنبثقة */}
+      {/* شاشة السؤال المنبثقة للجمهور (تم تحسينها لتناسب الشاشة) */}
       {isQuestionActive && (
-        <div className="fixed inset-0 z-80 bg-slate-900/80 dark:bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-4 lg:p-8 animate-in fade-in duration-500 transition-colors">
-          <div className="w-full max-w-6xl bg-white/95 dark:bg-slate-900/90 rounded-[2rem] lg:rounded-[4rem] border border-slate-200 dark:border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] dark:shadow-[0_0_100px_rgba(0,0,0,0.8)] p-6 lg:p-16 flex flex-col items-center text-center transform transition-all scale-100 max-h-screen overflow-y-auto custom-scroll">
-            <div
-              className={`px-6 py-3 lg:px-10 lg:py-4 rounded-2xl lg:rounded-[2rem] border-2 mb-6 lg:mb-12 flex items-center justify-center gap-2 lg:gap-4 shadow-2xl ${selectedCountry.isChallenge ? "bg-purple-100 border-purple-300 dark:bg-purple-950/50 dark:border-purple-500/50 shadow-purple-500/20" : "bg-blue-100 border-blue-300 dark:bg-blue-950/50 dark:border-blue-500/50 shadow-blue-500/20"}`}
-            >
-              <MapPin
-                className={`${selectedCountry.isChallenge ? "text-purple-600 dark:text-purple-400" : "text-blue-600 dark:text-blue-400"} w-6 h-6 lg:w-10 lg:h-10`}
-              />
-              <span
-                className={`font-black text-2xl lg:text-4xl ${selectedCountry.isChallenge ? "text-purple-700 dark:text-purple-300" : "text-blue-700 dark:text-blue-300"} drop-shadow-sm dark:drop-shadow-md flex items-center gap-2 lg:gap-3`}
-              >
+        <div className="fixed inset-0 z-80 bg-slate-900/80 dark:bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-3 lg:p-6 animate-in fade-in duration-500 transition-colors">
+          <div className="w-full max-w-5xl bg-white/95 dark:bg-slate-900/90 rounded-[2rem] lg:rounded-[3rem] border border-slate-200 dark:border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] dark:shadow-[0_0_100px_rgba(0,0,0,0.8)] p-4 lg:p-8 flex flex-col items-center justify-between text-center transform transition-all scale-100 max-h-[96vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            
+            <div className={`px-4 py-2 lg:px-8 lg:py-3 rounded-xl lg:rounded-2xl border-2 mb-4 flex items-center justify-center gap-2 shadow-xl shrink-0 ${selectedCountry.isChallenge ? "bg-purple-100 border-purple-300 dark:bg-purple-950/50 dark:border-purple-500/50 shadow-purple-500/20" : "bg-blue-100 border-blue-300 dark:bg-blue-950/50 dark:border-blue-500/50 shadow-blue-500/20"}`}>
+              <MapPin className={`${selectedCountry.isChallenge ? "text-purple-600 dark:text-purple-400" : "text-blue-600 dark:text-blue-400"} w-5 h-5 lg:w-8 lg:h-8`} />
+              <span className={`font-black text-xl lg:text-3xl ${selectedCountry.isChallenge ? "text-purple-700 dark:text-purple-300" : "text-blue-700 dark:text-blue-300"} drop-shadow-sm flex items-center gap-2`}>
                 {selectedCountry.name}{" "}
-                {(selectedCountry.id === capitals.team1 ||
-                  selectedCountry.id === capitals.team2) && (
-                  <Crown className="text-amber-500 w-6 h-6 lg:w-10 lg:h-10" />
+                {(selectedCountry.id === capitals.team1 || selectedCountry.id === capitals.team2) && (
+                  <Crown className="text-amber-500 w-5 h-5 lg:w-8 lg:h-8" />
                 )}
               </span>
             </div>
 
             {selectedCountry.owner !== null && !isAttacking ? (
-              <div className="py-8 lg:py-12 flex flex-col items-center justify-center w-full animate-in zoom-in-95">
-                <Swords className="w-24 h-24 lg:w-48 lg:h-48 mx-auto text-slate-300 dark:text-slate-700 opacity-50 mb-6 lg:mb-8" />
-                <h2 className="text-2xl lg:text-5xl font-black text-slate-800 dark:text-white leading-tight">
+              <div className="py-6 flex flex-col items-center justify-center w-full animate-in zoom-in-95 flex-1">
+                <Swords className="w-16 h-16 lg:w-32 lg:h-32 mx-auto text-slate-300 dark:text-slate-700 opacity-50 mb-4" />
+                <h2 className="text-xl lg:text-4xl font-black text-slate-800 dark:text-white leading-tight">
                   هذه الدولة مملوكة لـ <br />
-                  <span
-                    className={
-                      selectedCountry.owner === 1
-                        ? "text-cyan-600 dark:text-cyan-400 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)] lg:drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]"
-                        : "text-rose-600 dark:text-rose-400 drop-shadow-[0_0_10px_rgba(244,63,94,0.3)] lg:drop-shadow-[0_0_15px_rgba(244,63,94,0.5)]"
-                    }
-                  >
+                  <span className={selectedCountry.owner === 1 ? "text-cyan-600 dark:text-cyan-400 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]" : "text-rose-600 dark:text-rose-400 drop-shadow-[0_0_10px_rgba(244,63,94,0.3)]"}>
                     {selectedCountry.owner === 1 ? team1Name : team2Name}
                   </span>
                 </h2>
-                <p className="text-lg lg:text-3xl font-bold text-amber-600 dark:text-amber-400 animate-pulse mt-6 lg:mt-8 bg-amber-50 dark:bg-amber-500/10 px-6 py-2 lg:px-8 lg:py-3 rounded-full border border-amber-200 dark:border-amber-500/20">
+                <p className="text-base lg:text-2xl font-bold text-amber-600 dark:text-amber-400 animate-pulse mt-4 bg-amber-50 dark:bg-amber-500/10 px-5 py-2 rounded-full border border-amber-200 dark:border-amber-500/20">
                   بانتظار قرار الخصم بالهجوم...
                 </p>
               </div>
             ) : (
-              <div className="w-full flex flex-col items-center">
+              <div className="w-full flex flex-col items-center flex-1 justify-center min-h-0">
                 {!isQuestionRevealed ? (
-                  <div className="py-12 lg:py-24 text-center space-y-6 lg:space-y-8 animate-pulse">
-                    <h3 className="text-2xl lg:text-5xl font-black text-amber-500 dark:text-amber-400 drop-shadow-md dark:drop-shadow-xl tracking-wide">
+                  <div className="py-8 text-center space-y-4 animate-pulse">
+                    <h3 className="text-xl lg:text-4xl font-black text-amber-500 dark:text-amber-400 drop-shadow-md tracking-wide">
                       الرجاء الاستماع للحكم...
                     </h3>
-                    <div className="w-24 lg:w-32 h-2 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto overflow-hidden">
+                    <div className="w-20 lg:w-32 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto overflow-hidden">
                       <div className="w-1/2 h-full bg-amber-400 dark:bg-amber-500 rounded-full animate-shimmer"></div>
                     </div>
                   </div>
                 ) : (
-                  <div className="w-full flex flex-col items-center animate-in slide-in-from-bottom-8 duration-500">
-                    <h3
-                      className={`font-black text-slate-900 dark:text-white mb-6 lg:mb-10 leading-relaxed drop-shadow-md dark:drop-shadow-2xl text-center max-w-5xl ${selectedCountry.activeQuestion?.q?.length > 100 ? "text-xl md:text-3xl lg:text-5xl" : "text-2xl md:text-4xl lg:text-6xl"}`}
-                    >
+                  <div className="w-full flex flex-col items-center animate-in slide-in-from-bottom-8 duration-500 h-full justify-around">
+                    
+                    <h3 className={`font-black text-slate-900 dark:text-white mb-4 lg:mb-6 leading-snug drop-shadow-md text-center max-w-4xl shrink-0 ${selectedCountry.activeQuestion?.q?.length > 100 ? "text-lg md:text-2xl lg:text-3xl" : "text-xl md:text-3xl lg:text-4xl"}`}>
                       {selectedCountry.activeQuestion?.q}
                     </h3>
 
-                    {selectedCountry.activeQuestion?.options &&
-                      selectedCountry.activeQuestion.options.length > 0 && (
-                        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 w-full mb-6 lg:mb-10">
-                          {selectedCountry.activeQuestion.options.map(
-                            (o: any, i: number) => {
-                              let bgClass =
-                                "bg-slate-100 border-slate-300 text-slate-700 dark:bg-slate-800/80 dark:border-slate-600/50 dark:text-slate-300";
-
-                              if (showResult) {
-                                if (o === selectedCountry.activeQuestion.a) {
-                                  bgClass =
-                                    "bg-emerald-100 border-emerald-500 text-emerald-800 dark:bg-emerald-500/20 dark:border-emerald-400 dark:text-emerald-100 scale-105 shadow-[0_0_20px_rgba(52,211,153,0.2)] lg:shadow-[0_0_50px_rgba(52,211,153,0.3)] z-10";
-                                } else if (
-                                  o === team1Choice ||
-                                  o === team2Choice
-                                ) {
-                                  bgClass =
-                                    "bg-rose-50 border-rose-200 text-slate-400 dark:bg-rose-950/40 dark:border-rose-900/50 dark:text-slate-500 scale-95 opacity-60";
-                                } else {
-                                  bgClass =
-                                    "bg-slate-50 border-slate-200 text-slate-400 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-600 opacity-40 scale-95";
-                                }
+                    {selectedCountry.activeQuestion?.options && selectedCountry.activeQuestion.options.length > 0 && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-row gap-3 w-full mb-2 lg:mb-4 shrink-0">
+                        {selectedCountry.activeQuestion.options.map((o: any, i: number) => {
+                            let bgClass = "bg-slate-100 border-slate-300 text-slate-700 dark:bg-slate-800/80 dark:border-slate-600/50 dark:text-slate-300";
+                            if (showResult) {
+                              if (o === selectedCountry.activeQuestion.a) {
+                                bgClass = "bg-emerald-100 border-emerald-500 text-emerald-800 dark:bg-emerald-500/20 dark:border-emerald-400 dark:text-emerald-100 scale-105 shadow-lg z-10";
+                              } else if (o === team1Choice || o === team2Choice) {
+                                bgClass = "bg-rose-50 border-rose-200 text-slate-400 dark:bg-rose-950/40 dark:border-rose-900/50 dark:text-slate-500 scale-95 opacity-60";
                               } else {
-                                if (o === team1Choice || o === team2Choice) {
-                                  bgClass =
-                                    "bg-slate-200 border-slate-400 text-slate-900 dark:bg-slate-700 dark:border-slate-500 dark:text-white shadow-inner";
-                                }
+                                bgClass = "bg-slate-50 border-slate-200 text-slate-400 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-600 opacity-40 scale-95";
                               }
-
-                              return (
-                                <div
-                                  key={i}
-                                  className={`relative flex-1 p-4 lg:p-8 border-2 lg:border-4 rounded-2xl lg:rounded-[2rem] text-lg lg:text-3xl font-black transition-all duration-500 flex items-center justify-center text-center leading-snug backdrop-blur-sm ${bgClass}`}
-                                >
-                                  {o}
-                                  {team1Choice === o && (
-                                    <div
-                                      className={`absolute -top-3 -right-2 lg:-top-5 lg:-right-4 px-2 lg:px-4 py-1 lg:py-2 rounded-lg lg:rounded-xl text-[10px] lg:text-xs font-black shadow-xl transition-all duration-500 ${showResult ? (o === selectedCountry.activeQuestion.a ? "bg-emerald-500 text-white dark:bg-emerald-400 dark:text-slate-900" : "bg-slate-400 text-white dark:bg-slate-600 dark:text-slate-300") : "bg-cyan-500 text-white dark:bg-cyan-400 dark:text-slate-900"}`}
-                                    >
-                                      {team1Name}
-                                    </div>
-                                  )}
-                                  {team2Choice === o && (
-                                    <div
-                                      className={`absolute -bottom-3 -left-2 lg:-bottom-5 lg:-left-4 px-2 lg:px-4 py-1 lg:py-2 rounded-lg lg:rounded-xl text-[10px] lg:text-xs font-black shadow-xl transition-all duration-500 ${showResult ? (o === selectedCountry.activeQuestion.a ? "bg-emerald-500 text-white dark:bg-emerald-400 dark:text-slate-900" : "bg-slate-400 text-white dark:bg-slate-600 dark:text-slate-300") : "bg-rose-500 text-white dark:bg-rose-400 dark:text-slate-900"}`}
-                                    >
-                                      {team2Name}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            },
-                          )}
-                        </div>
-                      )}
-
-                    {showResult &&
-                      selectedCountry.activeQuestion.options &&
-                      selectedCountry.activeQuestion.options.length > 0 && (
-                        <div className="mt-4 lg:mt-8 p-6 lg:p-10 bg-white/80 dark:bg-slate-950/80 rounded-3xl lg:rounded-[3rem] border border-slate-200 dark:border-white/5 shadow-xl dark:shadow-2xl animate-in zoom-in-95 w-full max-w-4xl backdrop-blur-md">
-                          {(() => {
-                            let winner: 1 | 2 | null = null;
-                            if (isAttacking) {
-                              const attackerChoice =
-                                turn === 1 ? team1Choice : team2Choice;
-                              if (
-                                attackerChoice ===
-                                selectedCountry.activeQuestion?.a
-                              )
-                                winner = turn;
                             } else {
-                              const is1Correct =
-                                team1Choice ===
-                                selectedCountry.activeQuestion?.a;
-                              const is2Correct =
-                                team2Choice ===
-                                selectedCountry.activeQuestion?.a;
-                              if (turn === 1) {
-                                if (is1Correct) winner = 1;
-                                else if (is2Correct) winner = 2;
-                              } else {
-                                if (is2Correct) winner = 2;
-                                else if (is1Correct) winner = 1;
+                              if (o === team1Choice || o === team2Choice) {
+                                bgClass = "bg-slate-200 border-slate-400 text-slate-900 dark:bg-slate-700 dark:border-slate-500 dark:text-white shadow-inner";
                               }
                             }
 
-                            if (winner) {
-                              return (
-                                <>
-                                  <h3 className="text-3xl lg:text-5xl font-black text-emerald-500 dark:text-emerald-400 mb-4 lg:mb-6 drop-shadow-md dark:drop-shadow-[0_0_15px_rgba(52,211,153,0.5)]">
-                                    إجابة صحيحة! 🎉
-                                  </h3>
-                                  <p className="text-xl lg:text-3xl font-bold text-slate-700 dark:text-slate-200 mb-4 lg:mb-6">
-                                    تم استحلال الدولة لـ{" "}
-                                    <span className="text-slate-900 dark:text-white font-black">
-                                      {winner === 1 ? team1Name : team2Name}
-                                    </span>
-                                  </p>
+                            return (
+                              <div key={i} className={`relative flex-1 p-3 lg:p-4 border-2 lg:border-4 rounded-xl lg:rounded-2xl text-base lg:text-xl font-black transition-all duration-500 flex items-center justify-center text-center leading-tight backdrop-blur-sm min-h-[50px] lg:min-h-[80px] ${bgClass}`}>
+                                {o}
+                                {team1Choice === o && (
+                                  <div className={`absolute -top-3 -right-2 lg:-top-4 lg:-right-3 px-2 py-1 rounded-lg text-[9px] lg:text-xs font-black shadow-md transition-all duration-500 ${showResult ? (o === selectedCountry.activeQuestion.a ? "bg-emerald-500 text-white" : "bg-slate-400 text-white") : "bg-cyan-500 text-white"}`}>
+                                    {team1Name}
+                                  </div>
+                                )}
+                                {team2Choice === o && (
+                                  <div className={`absolute -bottom-3 -left-2 lg:-bottom-4 lg:-left-3 px-2 py-1 rounded-lg text-[9px] lg:text-xs font-black shadow-md transition-all duration-500 ${showResult ? (o === selectedCountry.activeQuestion.a ? "bg-emerald-500 text-white" : "bg-slate-400 text-white") : "bg-rose-500 text-white"}`}>
+                                    {team2Name}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          },
+                        )}
+                      </div>
+                    )}
 
-                                  {selectedCountry.id === capitals.team1 ||
-                                  selectedCountry.id === capitals.team2 ? (
-                                    <div className="inline-flex items-center gap-3 lg:gap-4 bg-amber-50 dark:bg-amber-500/10 px-4 py-2 lg:px-8 lg:py-4 rounded-2xl lg:rounded-3xl border border-amber-200 dark:border-amber-500/30">
-                                      <p className="text-lg lg:text-4xl font-black text-amber-600 dark:text-amber-400">
-                                        مكافأة العاصمة: ثلث نقاط الخصم
-                                      </p>
-                                      <Coins className="text-yellow-500 dark:text-yellow-400 w-8 h-8 lg:w-10 lg:h-10 drop-shadow-sm dark:drop-shadow-md shrink-0" />
-                                    </div>
-                                  ) : (
-                                    <div className="inline-flex items-center gap-3 lg:gap-4 bg-amber-50 dark:bg-amber-500/10 px-4 py-2 lg:px-8 lg:py-4 rounded-2xl lg:rounded-3xl border border-amber-200 dark:border-amber-500/30">
-                                      <p className="text-xl lg:text-4xl font-black text-amber-600 dark:text-amber-400">
-                                        المكافأة: {selectedCountry.value}
-                                      </p>
-                                      <Coins className="text-yellow-500 dark:text-yellow-400 w-8 h-8 lg:w-10 lg:h-10 drop-shadow-sm dark:drop-shadow-md shrink-0" />
-                                    </div>
-                                  )}
-                                </>
-                              );
+                    {showResult && selectedCountry.activeQuestion.options && selectedCountry.activeQuestion.options.length > 0 && (
+                      <div className="mt-2 p-4 lg:p-6 bg-white/80 dark:bg-slate-950/80 rounded-2xl lg:rounded-3xl border border-slate-200 dark:border-white/5 shadow-xl animate-in zoom-in-95 w-full max-w-3xl backdrop-blur-md shrink-0">
+                        {(() => {
+                          let winner: 1 | 2 | null = null;
+                          if (isAttacking) {
+                            const attackerChoice = turn === 1 ? team1Choice : team2Choice;
+                            if (attackerChoice === selectedCountry.activeQuestion?.a) winner = turn;
+                          } else {
+                            const is1Correct = team1Choice === selectedCountry.activeQuestion?.a;
+                            const is2Correct = team2Choice === selectedCountry.activeQuestion?.a;
+                            if (turn === 1) {
+                              if (is1Correct) winner = 1;
+                              else if (is2Correct) winner = 2;
                             } else {
-                              return (
-                                <>
-                                  <h3 className="text-3xl lg:text-5xl font-black text-rose-600 dark:text-rose-500 mb-4 lg:mb-6 drop-shadow-md dark:drop-shadow-[0_0_15px_rgba(244,63,94,0.5)]">
-                                    إجابة خاطئة! ❌
-                                  </h3>
-                                  <p className="text-lg lg:text-3xl font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900/50 px-6 py-3 lg:px-8 lg:py-4 rounded-2xl lg:rounded-3xl inline-block">
-                                    لم يتمكن أحد من استحلال الدولة
-                                  </p>
-                                </>
-                              );
+                              if (is2Correct) winner = 2;
+                              else if (is1Correct) winner = 1;
                             }
-                          })()}
-                        </div>
-                      )}
+                          }
+
+                          if (winner) {
+                            return (
+                              <>
+                                <h3 className="text-xl lg:text-3xl font-black text-emerald-500 dark:text-emerald-400 mb-2 drop-shadow-sm">
+                                  إجابة صحيحة! 🎉
+                                </h3>
+                                <p className="text-sm lg:text-xl font-bold text-slate-700 dark:text-slate-200 mb-3">
+                                  تم استحلال الدولة لـ <span className="text-slate-900 dark:text-white font-black">{winner === 1 ? team1Name : team2Name}</span>
+                                </p>
+                                {selectedCountry.id === capitals.team1 || selectedCountry.id === capitals.team2 ? (
+                                  <div className="inline-flex items-center gap-2 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 rounded-xl border border-amber-200 dark:border-amber-500/30">
+                                    <p className="text-base lg:text-2xl font-black text-amber-600 dark:text-amber-400">مكافأة العاصمة: ثلث نقاط الخصم</p>
+                                    <Coins className="text-yellow-500 dark:text-yellow-400 w-6 h-6 shrink-0" />
+                                  </div>
+                                ) : (
+                                  <div className="inline-flex items-center gap-2 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 rounded-xl border border-amber-200 dark:border-amber-500/30">
+                                    <p className="text-base lg:text-2xl font-black text-amber-600 dark:text-amber-400">المكافأة: {selectedCountry.value}</p>
+                                    <Coins className="text-yellow-500 dark:text-yellow-400 w-6 h-6 shrink-0" />
+                                  </div>
+                                )}
+                              </>
+                            );
+                          } else {
+                            return (
+                              <>
+                                <h3 className="text-xl lg:text-3xl font-black text-rose-600 dark:text-rose-500 mb-2 drop-shadow-sm">
+                                  إجابة خاطئة! ❌
+                                </h3>
+                                <p className="text-sm lg:text-xl font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900/50 px-4 py-2 rounded-xl inline-block">
+                                  لم يتمكن أحد من استحلال الدولة
+                                </p>
+                              </>
+                            );
+                          }
+                        })()}
+                      </div>
+                    )}
 
                     {!showResult && (
-                      <div className="text-[6rem] md:text-[10rem] lg:text-[12rem] leading-none font-black font-mono text-amber-500 dark:text-amber-400 drop-shadow-lg dark:drop-shadow-[0_0_40px_rgba(245,158,11,0.4)] mt-2 lg:mt-4">
+                      <div className="text-[4rem] sm:text-[6rem] lg:text-[8rem] leading-none font-black font-mono text-amber-500 dark:text-amber-400 drop-shadow-lg shrink-0 mt-2">
                         {timer}
                       </div>
                     )}
@@ -564,10 +517,7 @@ export default function WorldDominationAudience() {
         </div>
       )}
 
-      {/* التقسيم الشبكي الرئيسي للواجهة
-        - الجوال: الخريطة فوق (نص الشاشة)، تحتها الفريقين جنب بعض
-        - الديسكتوب: الفريق 1 يسار، الخريطة وسط، الفريق 2 يمين
-      */}
+      {/* التقسيم الشبكي الرئيسي للواجهة */}
       <div
         className={`grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 flex-1 min-h-0 transition-all duration-700 ${isQuestionActive ? "blur-sm opacity-40 scale-95 pointer-events-none" : ""}`}
       >
@@ -604,7 +554,10 @@ export default function WorldDominationAudience() {
                       let strokeWidth = 1.5;
 
                       if (country && country.isActive !== false) {
-                        if (country.owner === 1) {
+                        if (spiedCountryId === country.id) { // تلوين الرادار
+                          fillColor = "#f97316";
+                          strokeColor = isDark ? "#f97316" : "#ea580c";
+                        } else if (country.owner === 1) {
                           fillColor = isDark ? "#0891b2" : "#06b6d4";
                           strokeColor = isDark ? "#06b6d4" : "#0891b2";
                         } else if (country.owner === 2) {
@@ -777,6 +730,11 @@ export default function WorldDominationAudience() {
                 <span className="hidden sm:inline">غزو:</span>{" "}
                 {cards1.capitalCapture}
               </span>
+              <span className="flex items-center justify-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/30 py-1.5 rounded-lg border border-indigo-300 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-400 md:col-span-2 2xl:col-span-2">
+                <Crosshair size={12} className="lg:w-[14px] lg:h-[14px]" />{" "}
+                <span className="hidden sm:inline">تجسس:</span>{" "}
+                {cards1.spy}
+              </span>
             </div>
           </div>
 
@@ -863,6 +821,11 @@ export default function WorldDominationAudience() {
                 <Crown size={12} className="lg:w-[14px] lg:h-[14px]" />{" "}
                 <span className="hidden sm:inline">غزو:</span>{" "}
                 {cards2.capitalCapture}
+              </span>
+              <span className="flex items-center justify-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/30 py-1.5 rounded-lg border border-indigo-300 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-400 md:col-span-2 2xl:col-span-2">
+                <Crosshair size={12} className="lg:w-[14px] lg:h-[14px]" />{" "}
+                <span className="hidden sm:inline">تجسس:</span>{" "}
+                {cards2.spy}
               </span>
             </div>
           </div>
