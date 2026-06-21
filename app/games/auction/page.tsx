@@ -182,8 +182,8 @@ export default function AuctionRefereeScreen() {
     const selectedQs = [...realQuestions].sort(() => 0.5 - Math.random()).slice(0, actualQCount);
     
     setQuestions(selectedQs);
-    setT1Balance(startBalance);
-    setT2Balance(startBalance);
+    setT1Balance(50000);
+    setT2Balance(50000);
     setT1Points(0);
     setT2Points(0);
     
@@ -192,7 +192,7 @@ export default function AuctionRefereeScreen() {
     
     await supabase.from("auction_rooms").update({
       game_state: "bidding",
-      t1_balance: startBalance, t2_balance: startBalance,
+      t1_balance: 50000, t2_balance: 50000,
       t1_points: 0, t2_points: 0,
       t1_ambush: 3, t2_ambush: 3,
       questions: selectedQs, current_index: 0, turn: 1,
@@ -323,16 +323,29 @@ export default function AuctionRefereeScreen() {
       if (winner === 1) setT1Points(p => p + pts);
       else setT2Points(p => p + pts);
     } else if (choice === "ambush") {
-      // يرجع له مزايدته (مدبلة لو اختار دبل)، ويخصم من الخصم مزايدته العادية وتنقص بطاقة
       const refund = wBid * riskMultiplier;
-      if (winner === 1) {
-        setT1Balance(p => p + refund);
-        setT2Balance(p => Math.max(0, p - lBid));
-        setT1Ambush(p => Math.max(0, p - 1));
+      
+      if (lBid > 5000) {
+        // إذا مزايدة الخصم أكثر من 5000 يطلع تنبيه وما ينخصم منهم شيء
+        triggerAlert("مزايدة الخصم أكثر من 5000 لا يمكنك الخصم عليهم");
+        if (winner === 1) {
+          setT1Balance(p => p + refund);
+          setT1Ambush(p => Math.max(0, p - 1));
+        } else {
+          setT2Balance(p => p + refund);
+          setT2Ambush(p => Math.max(0, p - 1));
+        }
       } else {
-        setT2Balance(p => p + refund);
-        setT1Balance(p => Math.max(0, p - lBid));
-        setT2Ambush(p => Math.max(0, p - 1));
+        // إذا 5000 أو أقل ينقص كامل قيمة المزايدة حق الخصم
+        if (winner === 1) {
+          setT1Balance(p => p + refund);
+          setT2Balance(p => Math.max(0, p - lBid));
+          setT1Ambush(p => Math.max(0, p - 1));
+        } else {
+          setT2Balance(p => p + refund);
+          setT1Balance(p => Math.max(0, p - lBid));
+          setT2Ambush(p => Math.max(0, p - 1));
+        }
       }
     }
     setGameState("result");
@@ -488,10 +501,8 @@ export default function AuctionRefereeScreen() {
               </div>
               <div>
                 <label className="block text-[10px] md:text-xs font-black text-slate-500 dark:text-slate-400 mb-1 md:mb-2">الرصيد المبدئي</label>
-                <div className="flex items-center bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl focus-within:border-yellow-500 transition-colors overflow-hidden">
-                  <button onClick={() => setStartBalance(p => p + 1000)} className="px-4 py-3 md:py-4 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors font-black text-lg">+</button>
-                  <input type="number" value={startBalance} onChange={e => setStartBalance(Number(e.target.value))} className="w-full text-center bg-transparent font-black outline-none text-sm md:text-base [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                  <button onClick={() => setStartBalance(p => Math.max(0, p - 1000))} className="px-4 py-3 md:py-4 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors font-black text-lg">-</button>
+                <div className="w-full p-3.5 md:p-4 bg-slate-100 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-xl font-black text-center text-slate-700 dark:text-slate-300 text-sm md:text-base select-none cursor-not-allowed">
+                  50,000 💰 <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mr-1">(رصيد ثابت للعبة)</span>
                 </div>
               </div>
               <div className="relative" ref={dropdownRef}>
@@ -800,7 +811,7 @@ export default function AuctionRefereeScreen() {
                        <span className="font-black text-xl md:text-2xl text-amber-700 dark:text-amber-400">كمين (باقي {ambushesLeft})</span>
                        <span className="text-[10px] md:text-xs font-bold leading-relaxed bg-amber-100 dark:bg-amber-950 p-2 rounded-xl text-amber-800 dark:text-amber-300">
                          استرداد اللي دفعته ({isDoubleRisk ? getWinnerBid() * 2 : getWinnerBid()} 💰)<br/>
-                         وخصم مزايدة الخصم من رصيده
+                         وخصم مزايدة الخصم كاملة (إذا كانت 5,000 أو أقل)
                        </span>
                     </button>
                   ) : (

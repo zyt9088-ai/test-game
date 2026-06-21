@@ -106,6 +106,12 @@ export default function AuctionTeamScreen() {
     if (myBid === "" || Number(myBid) <= 0) { triggerAlert("الرجاء إدخال مبلغ مزايدة صحيح."); return; }
     if (Number(myBid) % 100 !== 0) { triggerAlert("يجب أن تكون المزايدة من مضاعفات 100."); return; }
     
+    // التعديل: منع المزايدة بأقل من 1000 تنفيذاً للاتفاق
+    if (Number(myBid) < 1000) { 
+      triggerAlert("عفواً، أقل مبلغ مسموح للمزايدة هو 1000 💰"); 
+      return; 
+    }
+    
     const myBalance = teamId === 1 ? liveData.t1_balance : liveData.t2_balance;
     if (Number(myBid) > myBalance) { triggerAlert("لا يمكنك المزايدة بأكثر من رصيدك الحالي."); return; }
     
