@@ -45,6 +45,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/admin", request.url));
   }
 
+  // الحماية الجديدة: إذا حاول يدخل الألعاب وهو مو مسجل، اطرده لصفحة اللاعب
+  if (request.nextUrl.pathname.startsWith("/games") && !user) {
+    return NextResponse.redirect(new URL("/player", request.url));
+  }
+
   return supabaseResponse;
 }
 

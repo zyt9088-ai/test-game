@@ -22,6 +22,7 @@ import {
   Loader2,
   Gavel,
 } from "lucide-react";
+import AdminMessagesNavigation from "./AdminMessagesNavigation";
 
 const cairo = Cairo({ subsets: ["arabic"], weight: ["400", "700", "900"] });
 
@@ -402,13 +403,18 @@ export default function AdminDashboardMain() {
             </div>
           </div>
 
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold py-2.5 px-5 rounded-xl transition-all border border-rose-100 dark:border-rose-900/30"
-          >
-            <LogOut size={18} />
-            <span className="hidden sm:inline">تسجيل الخروج</span>
-          </button>
+          <div className="flex items-center gap-3">
+            {/* قطعة الإشعارات وصندوق الوارد */}
+            <AdminMessagesNavigation />
+            
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold py-3 px-5 rounded-xl transition-all border border-rose-100 dark:border-rose-900/30 h-12"
+            >
+              <LogOut size={18} />
+              <span className="hidden sm:inline">تسجيل الخروج</span>
+            </button>
+          </div>
         </header>
 
         <section className="flex-1 flex flex-col items-center">
