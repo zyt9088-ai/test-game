@@ -254,14 +254,14 @@ export default function HomePage() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [userGames, setUserGames] = useState<any[]>([]);
 
-  const loadUserData = async (openProfile = false) => {
+  const loadUserData = async () => {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      // نعتمد على الحزمة الجديدة لجلب الجلسة الموثوقة من السيرفر مباشرة
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (userError || !user) {
+      if (!user) {
         setUserSession(null);
         setProfile(null);
-        setUserGames([]);
         return;
       }
 
@@ -269,35 +269,16 @@ export default function HomePage() {
 
       const { data } = await supabase
         .from("profiles")
-        .select("first_name, last_name, phone_number, email, total_games_played, total_wins")
+        .select("first_name, last_name, email")
         .eq("id", user.id)
         .maybeSingle();
-
-      const { data: gamesData } = await supabase
-        .from("user_games")
-        .select("*")
-        .eq("user_id", user.id);
-      
-      setUserGames(gamesData || []);
 
       const userProfile = data || {
         first_name: user.user_metadata?.first_name || user.user_metadata?.full_name?.split(' ')[0] || "لاعب",
         last_name: user.user_metadata?.last_name || user.user_metadata?.full_name?.split(' ')[1] || "جديد",
-        phone_number: user.user_metadata?.phone_number || "",
-        total_games_played: 0,
-        total_wins: 0
       };
 
       setProfile({ ...userProfile, email: user.email });
-      setEditFirstName(userProfile.first_name || "");
-      setEditLastName(userProfile.last_name || "");
-      setEditPhone(userProfile.phone_number || "");
-
-      // الفتح التلقائي لملف المستخدم
-      if (openProfile) {
-        setActiveModal("profile");
-      }
-
     } catch (err) {
       console.error("خطأ تقني أثناء جلب البيانات:", err);
     }
@@ -306,33 +287,10 @@ export default function HomePage() {
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains("dark"));
     
-    // يرسل أمر فتح الملف الشخصي أول ما يفتح الصفحة
-    loadUserData(true);
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        // يفتح الملف فقط وقت تسجيل الدخول أو الجلسة الأولى عشان ما يزعجه بالخلفية
-        loadUserData(event === 'SIGNED_IN' || event === 'INITIAL_SESSION');
-      } else {
-        setUserSession(null);
-        setProfile(null);
-      }
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-    
-    // تشغيل عند التحميل
     loadUserData();
 
-    // المراقبة القياسية لتحديثات الجلسة (بدون شروط معقدة)
+    // مراقب ذكي (واحد فقط) ومسحنا أوامر الطرد الإجبارية اللي كانت تخرب الألعاب
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("حدث تغير في الجلسة:", event);
       if (session?.user) {
         loadUserData();
       } else {
@@ -343,25 +301,6 @@ export default function HomePage() {
 
     return () => {
       subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-    loadUserData();
-
-    // مراقبة تسجيل الدخول عشان يتحدث الهيدر تلقائياً
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        loadUserData();
-      } else {
-        setUserSession(null);
-        setProfile(null);
-      }
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
     };
   }, []);
 
@@ -534,17 +473,30 @@ export default function HomePage() {
                         <p className="text-xs font-bold text-slate-400">مسجل الدخول كـ</p>
                         <p className="text-sm font-black text-slate-800 dark:text-white truncate">{profile.email}</p>
                       </div>
-                      <div className="p-1.5 flex flex-col gap-1">
-                        <button onClick={() => { setActiveModal("profile"); setIsAvatarDropdownOpen(false); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-right text-sm font-black text-slate-700 dark:text-slate-200 transition-colors">
-                          <Settings size={16} className="text-blue-500" /> حسابي
-                        </button>
-                        <button onClick={() => { setActiveModal("games"); setIsAvatarDropdownOpen(false); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-right text-sm font-black text-slate-700 dark:text-slate-200 transition-colors">
-                          <Gamepad2 size={16} className="text-purple-500" /> ألعابي
-                        </button>
-                        <hr className="border-slate-100 dark:border-slate-700 my-1" />
-                        <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl text-right text-sm font-black text-rose-600 dark:text-rose-400 transition-colors">
-                          <LogOut size={16} /> تسجيل الخروج
-                        </button>
+                      <div className="relative flex flex-col py-2">
+                        {/* السهم (Pointer) العلوي المطابق للصورة */}
+                        <div className="absolute -top-3 left-6 w-5 h-5 bg-white dark:bg-slate-800 border-t border-r border-slate-100 dark:border-slate-700 transform -rotate-45 z-0"></div>
+                        
+                        <div className="relative z-10">
+                          <Link href="/profile" className="block px-6 py-2.5 text-right text-base font-bold text-slate-800 dark:text-white hover:text-blue-600 transition-colors">
+                            حسابي
+                          </Link>
+                          
+                          {/* الخط الأحمر الفاصل */}
+                          <div className="mx-6 border-b border-red-500/60 dark:border-red-500/40 my-1"></div>
+                          
+                          <Link href="/my-games" className="block px-6 py-2.5 text-right text-base font-bold text-slate-800 dark:text-white hover:text-blue-600 transition-colors">
+                            ألعابي
+                          </Link>
+                          
+                          {/* الخط الأحمر الفاصل */}
+                          <div className="mx-6 border-b border-red-500/60 dark:border-red-500/40 my-1"></div>
+                          
+                          <button onClick={handleLogout} className="w-full flex items-center justify-between px-6 py-2.5 text-slate-800 dark:text-white hover:text-red-600 transition-colors">
+                            <LogOut size={18} className="text-slate-600 dark:text-slate-400" />
+                            <span className="text-base font-bold">خروج</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </>
@@ -761,82 +713,6 @@ export default function HomePage() {
         </footer>
       </div>
 
-      {/* نافذة "حسابي" المنبثقة والاحترافية */}
-      {activeModal === "profile" && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-800 rounded-[2rem] border-4 border-slate-900 dark:border-black p-6 max-w-md w-full shadow-[8px_8px_0px_#000] relative">
-            <button onClick={() => setActiveModal(null)} className="absolute top-4 left-4 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"><X size={20} /></button>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-6 flex items-center gap-2"><Settings className="text-blue-500" /> إعدادات حسابي</h3>
-            <div className="flex flex-col gap-4 mb-6">
-              <div className="flex gap-3">
-                <div className="w-1/2">
-                  <label className="block text-xs font-black text-slate-400 mb-1.5 mr-1">الاسم الأول</label>
-                  <input type="text" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} maxLength={12} className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-blue-500" />
-                </div>
-                <div className="w-1/2">
-                  <label className="block text-xs font-black text-slate-400 mb-1.5 mr-1">الاسم الثاني</label>
-                  <input type="text" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} maxLength={12} className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-blue-500" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-black text-slate-400 mb-1.5 mr-1">البريد الإلكتروني (أساسي لا يتغير)</label>
-                <input type="email" value={profile?.email || ""} disabled className="w-full bg-slate-100 dark:bg-slate-900/50 border-2 border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm font-bold text-slate-400 cursor-not-allowed outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-black text-slate-400 mb-1.5 mr-1">رقم الجوال</label>
-                <input type="text" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-blue-500 text-left" dir="ltr" />
-              </div>
-            </div>
-            <button onClick={handleSaveChanges} disabled={saveLoading} className="w-full py-3.5 bg-blue-600 border-b-4 border-blue-800 hover:bg-blue-500 text-white font-black text-base rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 active:border-b-0 disabled:opacity-50">
-              <Save size={18} /> {saveLoading ? "جاري الحفظ..." : "حفظ التغييرات الجديدة"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* نافذة "ألعابي" المنبثقة والاحترافية */}
-      {activeModal === "games" && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-800 rounded-[2rem] border-4 border-slate-900 dark:border-black p-6 max-w-md w-full shadow-[8px_8px_0px_#000] relative">
-            <button onClick={() => setActiveModal(null)} className="absolute top-4 left-4 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"><X size={20} /></button>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2"><Gamepad2 className="text-purple-500" /> مكتبة ألعابي</h3>
-            <p className="text-sm font-bold text-slate-400 mb-4">هنا قائمة بألعابك المشتراة وإحصائيات لعبك لها:</p>
-            <div className="flex flex-col gap-3 max-h-64 overflow-y-auto pr-1">
-              {[
-                { id: 'castle-war', title: 'حرب القلاع', icon: <Swords size={20} />, bg: 'bg-rose-100 dark:bg-rose-900/40 text-rose-500' },
-                { id: 'world-domination', title: 'السيطرة على العالم', icon: <Globe size={20} />, bg: 'bg-blue-100 dark:bg-blue-900/40 text-blue-500' },
-                { id: 'auction', title: 'حرب المزايدات', icon: <Gavel size={20} />, bg: 'bg-amber-100 dark:bg-amber-900/40 text-amber-500' }
-              ].map(game => {
-                const userGame = userGames.find(ug => ug.game_id === game.id);
-                const isPurchased = userGame?.is_purchased || false;
-                const playedCount = userGame?.games_played || 0;
-
-                return (
-                  <div key={game.id} className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 ${game.bg} rounded-lg flex items-center justify-center font-black`}>{game.icon}</div>
-                      <div>
-                        <h4 className="text-sm font-black">{game.title}</h4>
-                        {isPurchased ? (
-                          <span className="text-[11px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded">مشتراة ✓</span>
-                        ) : (
-                          <span className="text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded">غير مشتراة</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-left">
-                      <p className="text-[11px] font-bold text-slate-400">مرات اللعب</p>
-                      <p className={`text-base font-black ${isPurchased ? '' : 'text-slate-400'}`}>{playedCount} مرات</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* النافذة المنبثقة الاحترافية (Popup) */}
       {notification.isOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm transition-all duration-300">
           <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 max-w-md w-full shadow-2xl border-2 border-slate-100 dark:border-slate-700 transform scale-100 animate-in zoom-in-95">
