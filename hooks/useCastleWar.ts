@@ -205,7 +205,7 @@ export function useCastleWar() {
     const initGame = async () => {
       setIsLoading(true);
       try {
-        const newRoomCode = generateAlphanumericCode(5);
+        const newRoomCode = "C" + generateAlphanumericCode(4);
         setRoomCode(newRoomCode);
         roomCodeRef.current = newRoomCode;
         setJoinUrl(`${window.location.origin}/games/castle-war/join?code=${newRoomCode}`);

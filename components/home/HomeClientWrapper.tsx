@@ -34,8 +34,9 @@ export function HomeClientWrapper() {
     if (code.length === 5) {
       const prefix = code.charAt(0);
       if (prefix === "C") router.push(`/games/castle-war/join?code=${code}`);
-      else if (prefix === "W") router.push(`/games/world-domination/join?code=${code}`);
-      else router.push(`/games/auction/team?room=${code}`);
+      else if (prefix === "W") router.push(`/games/world-domination/audience?room=${code}`);
+      else if (prefix === "A") router.push(`/games/auction/team?room=${code}`);
+      else setJoinError("كود الغرفة غير صحيح أو غير معروف");
     } else {
       setJoinError("الكود يجب أن يكون 5 خانات");
     }

@@ -121,7 +121,7 @@ export function useWorldDomination() {
   useEffect(() => {
     const initGame = async () => {
       setIsLoading(true);
-      const newCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+      const newCode = "W" + Math.random().toString(36).substring(2, 6).toUpperCase();
       setRoomCode(newCode);
       
       if (typeof window !== "undefined") {

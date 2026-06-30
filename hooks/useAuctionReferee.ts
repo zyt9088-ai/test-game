@@ -59,7 +59,7 @@ export function useAuctionReferee() {
   useEffect(() => {
     setMounted(true);
     const initRoom = async () => {
-      const newCode = generateRoomCode().toUpperCase();
+      const newCode = "A" + Math.random().toString(36).substring(2, 6).toUpperCase();
       setRoomCode(newCode);
       await supabase.from("auction_rooms").upsert([{
         room_code: newCode,
