@@ -1,13 +1,9 @@
 import React from "react";
-import dynamic from "next/dynamic";
+
 import { Tajawal } from "next/font/google";
 import { HomeClientWrapper } from "@/components/home/HomeClientWrapper";
 
-// Load the heavy animated background dynamically to improve initial load
-const SolidGamingBackground = dynamic(
-  () => import("@/components/home/SolidGamingBackground"),
-  { ssr: false }
-);
+import SolidGamingBackground from "@/components/home/SolidGamingBackground";
 
 const tajawal = Tajawal({
   subsets: ["arabic"],
