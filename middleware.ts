@@ -60,11 +60,14 @@ export async function middleware(request: NextRequest) {
   }
 
   // الحماية الجديدة: إذا حاول يدخل الألعاب أو الحساب الشخصي وهو مو مسجل، اطرده لصفحة اللاعب
+  // يستثنى من ذلك مسارات الانضمام للغرف والمشاهدة التي يجب أن تكون متاحة للجميع بدون تسجيل حساب
+  const isPublicGameRoute = request.nextUrl.pathname.match(/^\/games\/[^\/]+\/(join|audience|display|team)(\/.*)?$/);
+
   if (
     (request.nextUrl.pathname.startsWith("/games") || 
      request.nextUrl.pathname.startsWith("/my-games") || 
      request.nextUrl.pathname.startsWith("/profile")) && 
-    !user
+    !user && !isPublicGameRoute
   ) {
     return NextResponse.redirect(new URL("/player", request.url));
   }
