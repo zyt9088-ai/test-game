@@ -1,54 +1,11 @@
-import React, { useEffect, useState } from "react";
+"use client";
+import React from "react";
 import Link from "next/link";
-import { createBrowserClient } from "@supabase/ssr";
 import { Bell, Inbox } from "lucide-react";
+import { useAdminMessagesNav } from "@/hooks/useAdminMessagesNav";
 
 export default function AdminMessagesNavigation() {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const [messageCount, setMessageCount] = useState(0);
-
-  useEffect(() => {
-    // دالة تجلب عدد الرسائل الحالية
-    const fetchMessagesCount = async () => {
-      const { count, error } = await supabase
-        .from("contact_messages")
-        .select("*", { count: "exact", head: true });
-        
-      if (!error && count !== null) {
-        setMessageCount(count);
-      }
-    };
-
-    fetchMessagesCount();
-
-    // تفعيل الاستماع اللحظي (Real-time) لأي رسالة جديدة توصل
-    const channel = supabase
-      .channel("messages_notifications")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "contact_messages" },
-        () => {
-          // تحديث العداد لما توصل رسالة جديدة
-          setMessageCount((prev) => prev + 1);
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "contact_messages" },
-        () => {
-          // تحديث العداد لما تحذف رسالة
-          setMessageCount((prev) => Math.max(0, prev - 1));
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  const { messageCount } = useAdminMessagesNav();
 
   return (
     <div className="flex items-center gap-3 md:gap-4">

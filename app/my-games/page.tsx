@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { 
   Gamepad2, Swords, Globe, Gavel, ArrowRight, Home, Info, 
   MessageCircle, ChevronDown, User, Sun, Moon, LogOut 
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Tajawal } from "next/font/google";
 
 const tajawal = Tajawal({
@@ -15,6 +16,8 @@ const tajawal = Tajawal({
 });
 
 export default function MyGamesPage() {
+  const router = useRouter();
+  const supabase = getSupabaseBrowser();
   const [userSession, setUserSession] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [userGames, setUserGames] = useState<any[]>([]);
@@ -74,7 +77,7 @@ export default function MyGamesPage() {
     setUserSession(null);
     setProfile(null);
     setIsAvatarDropdownOpen(false);
-    window.location.href = "/";
+    router.push("/");
   };
 
   const toggleTheme = () => {

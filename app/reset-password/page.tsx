@@ -1,16 +1,15 @@
 "use client";
 import { useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 import { Cairo } from "next/font/google";
 
 const cairo = Cairo({ subsets: ["arabic"], weight: ["400", "700", "900"] });
 
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
+const supabase = getSupabaseBrowser();
 
 export default function ResetPasswordPage() {
+  const router = useRouter();
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -32,7 +31,7 @@ export default function ResetPasswordPage() {
       } else {
         setMessage("تم تحديث كلمة المرور بنجاح! جاري تحويلك للوحة التحكم...");
         setTimeout(() => {
-          window.location.href = "/admin";
+          router.push("/admin");
         }, 2000);
       }
     } catch (err) {

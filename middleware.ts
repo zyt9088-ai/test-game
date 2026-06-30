@@ -35,9 +35,23 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // الحماية الجدارية: إذا حاول يدخل أي رابط للآدمن وهو مو مسجل، اطرده لصفحة الدخول
-  if (request.nextUrl.pathname.startsWith("/admin") && !user) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  // الحماية الجدارية للوحة التحكم (Admin)
+  if (request.nextUrl.pathname.startsWith("/admin")) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    // التحقق من صلاحية المدير
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.role !== 'Admin') {
+      // إذا لم يكن مديراً، يتم طرده لصفحة اللاعب
+      return NextResponse.redirect(new URL("/player", request.url));
+    }
   }
 
   // إذا هو مسجل دخول وحاول يرجع لصفحة الدخول، وجهه للوحة التحكم

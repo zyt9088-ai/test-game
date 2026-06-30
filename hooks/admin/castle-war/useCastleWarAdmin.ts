@@ -1,0 +1,212 @@
+"use client";
+import { useState, useEffect } from "react";
+import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { CWQuestion } from "@/types";
+
+export function useCastleWarAdmin() {
+  const supabase = getSupabaseBrowser();
+
+  const [cwActiveSubTab, setCwActiveSubTab] = useState<"30sec" | "5sec" | "team" | "general">("30sec");
+
+  const [cw30SecDB, setCw30SecDB] = useState<string[]>([]);
+  const [newCw30Sec, setNewCw30Sec] = useState<string>("");
+  const [selectedCw30Sec, setSelectedCw30Sec] = useState<string[]>([]);
+
+  const [cw5SecDB, setCw5SecDB] = useState<string[]>([]);
+  const [newCw5Sec, setNewCw5Sec] = useState<string>("");
+  const [selectedCw5Sec, setSelectedCw5Sec] = useState<string[]>([]);
+
+  const [cwTeamDB, setCwTeamDB] = useState<string[]>([]);
+  const [newCwTeam, setNewCwTeam] = useState<string>("");
+  const [selectedCwTeam, setSelectedCwTeam] = useState<string[]>([]);
+
+  const [cwGenDB, setCwGenDB] = useState<{ q: string; a: string; options?: string[] }[]>([]);
+  const [selectedCwGen, setSelectedCwGen] = useState<number[]>([]);
+  const [newCwGenQuestion, setNewCwGenQuestion] = useState<string>("");
+  const [genOpt1, setGenOpt1] = useState<string>("");
+  const [genOpt2, setGenOpt2] = useState<string>("");
+  const [genOpt3, setGenOpt3] = useState<string>("");
+  const [correctGenOpt, setCorrectGenOpt] = useState<number>(1);
+
+  const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+
+  const showToast = (msg: string, type: "success" | "error" = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const { data, error } = await supabase.from("cw_settings").select("*");
+      if (data && !error) {
+        data.forEach((item) => {
+          if (item.id === "admin_cw_30sec_db") setCw30SecDB(item.data);
+          if (item.id === "admin_cw_5sec_db") setCw5SecDB(item.data);
+          if (item.id === "admin_cw_team_db") setCwTeamDB(item.data);
+          if (item.id === "admin_cw_general_db") setCwGenDB(item.data);
+        });
+      }
+    };
+    fetchSettings();
+  }, [supabase]);
+
+  const saveCw30Data = async (newData: string[]) => {
+    setCw30SecDB(newData);
+    await supabase.from("cw_settings").upsert({ id: "admin_cw_30sec_db", data: newData });
+  };
+  const saveCw5Data = async (newData: string[]) => {
+    setCw5SecDB(newData);
+    await supabase.from("cw_settings").upsert({ id: "admin_cw_5sec_db", data: newData });
+  };
+  const saveCwTeamData = async (newData: string[]) => {
+    setCwTeamDB(newData);
+    await supabase.from("cw_settings").upsert({ id: "admin_cw_team_db", data: newData });
+  };
+  const saveCwGenData = async (newData: CWQuestion[]) => {
+    setCwGenDB(newData);
+    await supabase.from("cw_settings").upsert({ id: "admin_cw_general_db", data: newData });
+  };
+
+  const exportToJsonFile = (data: any, filename: string) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${filename}_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("تم تصدير الملف بنجاح!");
+  };
+
+  const handleJsonImport = (e: React.ChangeEvent<HTMLInputElement>, saveFn: (data: any[]) => void) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (Array.isArray(parsed)) {
+          saveFn(parsed);
+          showToast("تم استيراد البيانات بنجاح!");
+        } else {
+          showToast("صيغة الملف غير صحيحة، يجب أن يكون الملف مصفوفة (Array).", "error");
+        }
+      } catch (error) {
+        showToast("حدث خطأ أثناء قراءة ملف JSON.", "error");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const handleExcelUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    db: string[],
+    saveFn: (data: any[]) => void,
+    typeLabel: string
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const XLSX = await import("xlsx");
+        const workbook = XLSX.read(data, { type: "array" });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[][];
+        let prompts: string[] = [];
+        jsonData.forEach((row) =>
+          row.forEach((cell) => {
+            if (typeof cell === "string" && cell.trim()) prompts.push(cell.trim());
+            else if (typeof cell === "number") prompts.push(String(cell));
+          })
+        );
+        if (prompts.length > 0) {
+          saveFn(Array.from(new Set([...db, ...prompts])));
+          showToast(`تم رفع ${prompts.length} ${typeLabel} بنجاح!`);
+        } else {
+          showToast("الملف المرفوع فارغ.", "error");
+        }
+      } catch (error) {
+        showToast("خطأ في قراءة ملف الإكسل.", "error");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
+
+  const handleCwGenFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const XLSX = await import("xlsx");
+        const workbook = XLSX.read(data, { type: "array" });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[][];
+
+        const parsedQAs = jsonData
+          .map((row) => {
+            if (row.length >= 5) {
+              return {
+                q: String(row[0]).trim(),
+                options: [String(row[1]).trim(), String(row[2]).trim(), String(row[3]).trim()],
+                a: String(row[4]).trim(),
+              };
+            } else if (row.length >= 2) {
+              return { q: String(row[0]).trim(), a: String(row[1]).trim() };
+            }
+            return null;
+          })
+          .filter((item) => item !== null && item.q && item.a) as CWQuestion[];
+
+        if (parsedQAs.length > 0) {
+          saveCwGenData([...cwGenDB, ...parsedQAs]);
+          showToast(`تم رفع ودمج ${parsedQAs.length} سؤال بنجاح!`);
+        } else {
+          showToast("لم يتم العثور على أسئلة صحيحة. راجع التنسيق المطلوب.", "error");
+        }
+      } catch (error) {
+        showToast("حدث خطأ أثناء قراءة ملف الإكسل.", "error");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
+
+  const addManualCwGenQA = () => {
+    if (!newCwGenQuestion.trim() || !genOpt1.trim() || !genOpt2.trim() || !genOpt3.trim()) {
+      showToast("الرجاء إدخال السؤال والخيارات الثلاثة كاملة!", "error");
+      return;
+    }
+    const options = [genOpt1.trim(), genOpt2.trim(), genOpt3.trim()];
+    const answer = options[correctGenOpt - 1];
+    const newQA = { q: newCwGenQuestion.trim(), options, a: answer };
+
+    saveCwGenData([...cwGenDB, newQA]);
+    showToast("تمت إضافة السؤال بنجاح!");
+
+    setNewCwGenQuestion("");
+    setGenOpt1("");
+    setGenOpt2("");
+    setGenOpt3("");
+    setCorrectGenOpt(1);
+  };
+
+  return {
+    cwActiveSubTab, setCwActiveSubTab,
+    cw30SecDB, setCw30SecDB, newCw30Sec, setNewCw30Sec, selectedCw30Sec, setSelectedCw30Sec,
+    cw5SecDB, setCw5SecDB, newCw5Sec, setNewCw5Sec, selectedCw5Sec, setSelectedCw5Sec,
+    cwTeamDB, setCwTeamDB, newCwTeam, setNewCwTeam, selectedCwTeam, setSelectedCwTeam,
+    cwGenDB, setCwGenDB, selectedCwGen, setSelectedCwGen, newCwGenQuestion, setNewCwGenQuestion,
+    genOpt1, setGenOpt1, genOpt2, setGenOpt2, genOpt3, setGenOpt3, correctGenOpt, setCorrectGenOpt,
+    toast, showToast,
+    saveCw30Data, saveCw5Data, saveCwTeamData, saveCwGenData,
+    exportToJsonFile, handleJsonImport, handleExcelUpload, handleCwGenFileUpload, addManualCwGenQA
+  };
+}

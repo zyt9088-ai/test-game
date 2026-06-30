@@ -1,0 +1,33 @@
+name: Lden Game Platform CI
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  pull_request:
+    branches: [ "master", "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run Type Checking
+      run: npx tsc --noEmit
+      
+    - name: Build Next.js
+      run: npm run build
+      env:
+        # We define a dummy URL for build time so Next.js doesn't fail building pages
+        NEXT_PUBLIC_SUPABASE_URL: "https://dummy.supabase.co"
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "dummy"

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { Cairo } from "next/font/google";
 // استدعينا أداة التوجيه من Next.js
 import { useRouter } from "next/navigation";
@@ -16,10 +16,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
 
   // دخلنا تهيئة سوبابيس داخل المكون عشان تتحدث مع كل طلب وما تقرأ من الكاش القديم
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
+  const supabase = getSupabaseBrowser();
 
   const handlePasswordLogin = async () => {
     if (!email || !password) {

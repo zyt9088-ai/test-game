@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { 
   Settings, Save, ArrowRight, Home, Info, Gamepad2, 
   MessageCircle, ChevronDown, User, Sun, Moon, LogOut, 
   Swords, Globe, Gavel 
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Tajawal } from "next/font/google";
 
 const tajawal = Tajawal({
@@ -16,6 +17,8 @@ const tajawal = Tajawal({
 });
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const supabase = getSupabaseBrowser();
   const [userSession, setUserSession] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -101,7 +104,7 @@ export default function ProfilePage() {
     setUserSession(null);
     setProfile(null);
     setIsAvatarDropdownOpen(false);
-    window.location.href = "/";
+    router.push("/");
   };
 
   const toggleTheme = () => {

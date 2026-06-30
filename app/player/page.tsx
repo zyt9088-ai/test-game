@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Tajawal } from "next/font/google";
-import { createBrowserClient } from "@supabase/ssr";
+import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { 
   Home, 
   MessageCircle, 
@@ -22,10 +23,7 @@ const tajawal = Tajawal({
   weight: ["400", "500", "700", "800", "900"],
 });
 
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = getSupabaseBrowser();
 
 // ----------------------------------------------------
 // قائمة الدول العربية ومفاتيحها والأعلام
@@ -102,6 +100,7 @@ const SolidGamingBackground = () => {
 };
 
 export default function PlayerLoginPage() {
+  const router = useRouter();
   const [isDark, setIsDark] = useState(true);
   
   // حالات الإدخال المشتركة
@@ -172,7 +171,7 @@ export default function PlayerLoginPage() {
           password: authPassword,
         });
         if (error) throw error;
-        window.location.href = "/";
+        router.push("/");
       } catch (error: any) {
         console.error("Email auth error:", error);
         setNotification({ isOpen: true, message: "تأكد من صحة البيانات أو إن الحساب غير موجود مسبقاً.", type: "error" });
@@ -234,10 +233,7 @@ export default function PlayerLoginPage() {
   return (
     <main className={`min-h-screen flex flex-col relative overflow-x-hidden bg-slate-50 dark:bg-[#0f172a] transition-colors duration-300 ${tajawal.className}`} dir="rtl">
       
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes floatGameExtra { 0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); } 25% { transform: translate(-20px, 15px) rotate(8deg) scale(1.05); } 50% { transform: translate(-10px, -15px) rotate(-8deg) scale(0.95); } 75% { transform: translate(15px, 20px) rotate(5deg) scale(1.02); } }
-        .animate-float-game-extra { animation: floatGameExtra ease-in-out infinite; }
-      `}} />
+
 
       {/* محرك الخلفية */}
       <SolidGamingBackground />
