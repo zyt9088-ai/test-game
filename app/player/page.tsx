@@ -156,6 +156,27 @@ export default function PlayerLoginPage() {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!authEmail) {
+      setNotification({ isOpen: true, message: "الرجاء كتابة البريد الإلكتروني أولاً حتى نتمكن من إرسال رابط الاستعادة", type: "error" });
+      return;
+    }
+    setAuthLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(authEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) {
+        setNotification({ isOpen: true, message: `خطأ: ${error.message}`, type: "error" });
+      } else {
+        setNotification({ isOpen: true, message: "تم إرسال رابط استعادة كلمة المرور لإيميلك! شيك على الوارد.", type: "success" });
+      }
+    } catch (err) {
+      setNotification({ isOpen: true, message: "حدث خطأ غير متوقع.", type: "error" });
+    }
+    setAuthLoading(false);
+  };
+
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -381,6 +402,19 @@ export default function PlayerLoginPage() {
                 placeholder="كلمة المرور"
                 className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 md:p-4 text-slate-900 dark:text-white font-bold outline-none focus:border-blue-500 transition-colors"
               />
+
+              {isLoginMode && (
+                <div className="flex justify-end mt-1 px-1">
+                  <button
+                    type="button"
+                    onClick={handleResetPassword}
+                    disabled={authLoading}
+                    className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                  >
+                    هل نسيت كلمة المرور؟
+                  </button>
+                </div>
+              )}
 
               {!isLoginMode && (
                 <>

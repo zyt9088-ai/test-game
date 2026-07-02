@@ -124,7 +124,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className={`min-h-screen w-full fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-950 p-4 ${cairo.className} transition-colors duration-500`}
+      className={`min-h-screen w-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-950 p-4 py-12 ${cairo.className} transition-colors duration-500`}
       dir="rtl"
     >
       {mounted && (

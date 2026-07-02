@@ -5,6 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const next = searchParams.get('next') // استخراج المتغير next
 
   if (code) {
     const cookieStore = await cookies()
@@ -33,6 +34,11 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {
+      // إذا كان هناك رابط توجيه مخصص (next) نعطيه الأولوية
+      if (next) {
+        return NextResponse.redirect(`${origin}${next}`)
+      }
+
       // جلب بيانات المستخدم الحالي
       const { data: { user } } = await supabase.auth.getUser()
 
