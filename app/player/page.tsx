@@ -164,7 +164,7 @@ export default function PlayerLoginPage() {
     setAuthLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(authEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
       });
       if (error) {
         setNotification({ isOpen: true, message: `خطأ: ${error.message}`, type: "error" });
