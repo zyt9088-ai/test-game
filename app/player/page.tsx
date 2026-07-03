@@ -420,7 +420,7 @@ export default function PlayerLoginPage() {
                     className="w-5 h-5 accent-blue-600 rounded cursor-pointer shrink-0"
                   />
                   <label htmlFor="terms" className="text-sm font-bold text-slate-600 dark:text-slate-400 cursor-pointer">
-                    أوافق على <Link href="#" className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300">الشروط والأحكام</Link>
+                    أوافق على <Link href="/terms" target="_blank" className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300">الشروط والأحكام</Link>
                   </label>
                 </div>
               )}

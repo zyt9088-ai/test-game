@@ -143,6 +143,20 @@ export function useAuctionReferee() {
     }
   };
 
+  const resetTeamDevice = async (teamNum: 1 | 2) => {
+    if (!roomCode) return;
+    const colName = teamNum === 1 ? "t1_device_id" : "t2_device_id";
+    const { error } = await supabase
+      .from("auction_rooms")
+      .update({ [colName]: null })
+      .eq("room_code", roomCode);
+    if (!error) {
+      triggerAlert(`تم تصفير جهاز الفريق ${teamNum}. يمكن للقائد الدخول الآن.`);
+    } else {
+      triggerAlert("حدث خطأ أثناء التصفير.");
+    }
+  };
+
   const startGame = async () => {
     const { data, error } = await supabase
       .from("aw_settings")
@@ -360,6 +374,6 @@ export function useAuctionReferee() {
     timer, isTimerRunning, setIsTimerRunning, isQuestionVisible, setIsQuestionVisible, alertConfig,
     triggerAlert, closeAlert, triggerConfirm, copyLink, startGame, calculateMinBid, handleBidsSubmit, handlePreRiskDecision,
     handleBuyQuestion, handleAnswer, handleRewardChoice, nextQuestion, getWinnerName, getWinnerBid,
-    getLoserBid, getWinnerCurrentBalance
+    getLoserBid, getWinnerCurrentBalance, resetTeamDevice
   };
 }

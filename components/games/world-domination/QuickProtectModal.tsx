@@ -17,6 +17,7 @@ interface QuickProtectModalProps {
   setCards1: React.Dispatch<React.SetStateAction<any>>;
   setCards2: React.Dispatch<React.SetStateAction<any>>;
   setProtectedCountries: React.Dispatch<React.SetStateAction<any>>;
+  capitals: { team1: string | null; team2: string | null };
 }
 
 export default function QuickProtectModal({
@@ -29,6 +30,7 @@ export default function QuickProtectModal({
   setCards1,
   setCards2,
   setProtectedCountries,
+  capitals,
 }: QuickProtectModalProps) {
   if (!quickProtectTeam) return null;
 
@@ -43,13 +45,13 @@ export default function QuickProtectModal({
           </span>
         </h3>
         <p className="text-slate-500 mb-6 text-xs lg:text-sm font-bold">
-          اختر الدولة المراد تحصينها بالدرع. (لن يؤثر على مجريات السؤال الحالي)
+          اختر الدولة المراد تحصينها بالدرع. (لا يمكن حماية العاصمة)
         </p>
         <div
           className={`max-h-60 overflow-y-auto flex flex-col gap-2 mb-6 pr-2 ${modernScrollbar}`}
         >
           {countries
-            .filter((c) => c.owner === quickProtectTeam && !protectedCountries[c.id])
+            .filter((c) => c.owner === quickProtectTeam && !protectedCountries[c.id] && c.id !== capitals.team1 && c.id !== capitals.team2)
             .map((c) => (
               <button
                 key={c.id}
@@ -67,7 +69,7 @@ export default function QuickProtectModal({
                 <Shield size={16} />
               </button>
             ))}
-          {countries.filter((c) => c.owner === quickProtectTeam && !protectedCountries[c.id]).length === 0 && (
+          {countries.filter((c) => c.owner === quickProtectTeam && !protectedCountries[c.id] && c.id !== capitals.team1 && c.id !== capitals.team2).length === 0 && (
             <p className="text-rose-500 font-bold bg-rose-50 dark:bg-rose-900/20 p-4 rounded-xl text-sm">
               لا يوجد دول مملوكة قابلة للحماية حالياً.
             </p>

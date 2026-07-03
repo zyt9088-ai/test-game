@@ -21,6 +21,8 @@ export const Footer = ({ scrollToSection }: { scrollToSection: (e: React.MouseEv
             <li><a href="#about-section" onClick={(e) => scrollToSection(e, "about-section")} className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex items-center gap-2"><ChevronDown size={16} className="-rotate-90 text-purple-500" /> عن المنصة</a></li>
             <li><a href="#games-section" onClick={(e) => scrollToSection(e, "games-section")} className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-2"><ChevronDown size={16} className="-rotate-90 text-emerald-500" /> الألعاب والخدمات</a></li>
             <li><a href="#contact-section" onClick={(e) => scrollToSection(e, "contact-section")} className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors flex items-center gap-2"><ChevronDown size={16} className="-rotate-90 text-amber-500" /> تواصل معنا</a></li>
+            <li><Link href="/terms" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center gap-2"><ChevronDown size={16} className="-rotate-90 text-indigo-500" /> الشروط والأحكام</Link></li>
+            <li><Link href="/guides" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors flex items-center gap-2"><ChevronDown size={16} className="-rotate-90 text-cyan-500" /> كيف تلعب؟ (دليل الألعاب)</Link></li>
           </ul>
         </div>
         <div className="flex flex-col items-center sm:items-start gap-4 sm:col-span-2 md:col-span-1">

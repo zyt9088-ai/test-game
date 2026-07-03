@@ -179,6 +179,11 @@ export default function MyGamesPage() {
                             ألعابي
                           </Link>
                           <div className="mx-6 border-b border-red-500/60 dark:border-red-500/40 my-1"></div>
+                          <Link href="/guides" className="flex items-center justify-between px-6 py-2.5 text-right text-base font-bold text-slate-800 dark:text-white hover:text-cyan-600 transition-colors">
+                            <span>كيف تلعب؟</span>
+                            <Info size={16} />
+                          </Link>
+                          <div className="mx-6 border-b border-red-500/60 dark:border-red-500/40 my-1"></div>
                           <button onClick={handleLogout} className="w-full flex items-center justify-between px-6 py-2.5 text-slate-800 dark:text-white hover:text-red-600 transition-colors">
                             <LogOut size={18} className="text-slate-600 dark:text-slate-400" />
                             <span className="text-base font-bold">خروج</span>

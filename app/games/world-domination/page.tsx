@@ -62,6 +62,7 @@ export default function WorldDominationGame() {
         setCards1={setCards1}
         setCards2={setCards2}
         setProtectedCountries={setProtectedCountries}
+        capitals={capitals}
       />
 
       <StolenCapitalAlertModal

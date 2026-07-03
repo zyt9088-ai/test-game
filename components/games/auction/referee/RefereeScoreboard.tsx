@@ -1,10 +1,11 @@
 "use client";
 import React from "react";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, RefreshCw } from "lucide-react";
 
 export default function RefereeScoreboard({
   gameState, currentIndex, questions, t1Name, t2Name,
-  t1Balance, t2Balance, t1Points, t2Points, t1Ambush, t2Ambush
+  t1Balance, t2Balance, t1Points, t2Points, t1Ambush, t2Ambush,
+  resetTeamDevice
 }: any) {
   if (gameState === "setup") return null;
   return (
@@ -18,8 +19,11 @@ export default function RefereeScoreboard({
             </span>
          </div>
          <div className="grid grid-cols-2 gap-3 md:gap-4 bg-white dark:bg-slate-900 p-3 md:p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 shadow-sm">
-           <div className="text-center p-2 md:p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-xl border border-cyan-200 dark:border-cyan-800/50 shadow-inner flex flex-col justify-center">
-              <p className="text-[10px] md:text-xs font-black text-cyan-600 dark:text-cyan-400 mb-1 truncate">{t1Name}</p>
+           <div className="text-center p-2 md:p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-xl border border-cyan-200 dark:border-cyan-800/50 shadow-inner flex flex-col justify-center relative group">
+              <button onClick={() => resetTeamDevice(1)} title="إعادة تعيين جهاز القائد" className="absolute top-2 left-2 p-1.5 bg-white dark:bg-slate-800 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors shadow-sm opacity-50 hover:opacity-100 border border-slate-200 dark:border-slate-700">
+                <RefreshCw size={12} />
+              </button>
+              <p className="text-[10px] md:text-xs font-black text-cyan-600 dark:text-cyan-400 mb-1 truncate px-6">{t1Name}</p>
               <p className="font-black text-base md:text-xl text-slate-800 dark:text-white">
                 {t1Balance <= 0 ? <span className="text-rose-500">إفلاس 0 💰</span> : `${t1Balance.toLocaleString()} 💰`} 
                 <span className="text-slate-300 dark:text-slate-700 mx-1 md:mx-2">|</span> 
@@ -29,8 +33,11 @@ export default function RefereeScoreboard({
                 {Array.from({ length: 3 }).map((_, i) => (<ShieldAlert key={i} size={12} className={i < t1Ambush ? "text-amber-500" : "text-slate-300 dark:text-slate-700 opacity-30"} />))}
               </div>
            </div>
-           <div className="text-center p-2 md:p-3 bg-rose-50 dark:bg-rose-900/20 rounded-xl border border-rose-200 dark:border-rose-800/50 shadow-inner flex flex-col justify-center">
-              <p className="text-[10px] md:text-xs font-black text-rose-600 dark:text-rose-400 mb-1 truncate">{t2Name}</p>
+           <div className="text-center p-2 md:p-3 bg-rose-50 dark:bg-rose-900/20 rounded-xl border border-rose-200 dark:border-rose-800/50 shadow-inner flex flex-col justify-center relative group">
+              <button onClick={() => resetTeamDevice(2)} title="إعادة تعيين جهاز القائد" className="absolute top-2 right-2 p-1.5 bg-white dark:bg-slate-800 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors shadow-sm opacity-50 hover:opacity-100 border border-slate-200 dark:border-slate-700">
+                <RefreshCw size={12} />
+              </button>
+              <p className="text-[10px] md:text-xs font-black text-rose-600 dark:text-rose-400 mb-1 truncate px-6">{t2Name}</p>
               <p className="font-black text-base md:text-xl text-slate-800 dark:text-white">
                 {t2Balance <= 0 ? <span className="text-rose-500">إفلاس 0 💰</span> : `${t2Balance.toLocaleString()} 💰`} 
                 <span className="text-slate-300 dark:text-slate-700 mx-1 md:mx-2">|</span> 

@@ -16,10 +16,13 @@ import {
   Moon,
 } from "lucide-react";
 
-export const TopNav = ({ scrollToSection }: { scrollToSection: (e: React.MouseEvent<HTMLAnchorElement>, id: string) => void }) => {
+export const TopNav = ({ scrollToSection }: { scrollToSection?: (e: React.MouseEvent<HTMLAnchorElement>, id: string) => void }) => {
   const { theme, setTheme } = useTheme();
   const { userSession, profile, logout } = useAuth();
   const [isAvatarDropdownOpen, setIsAvatarDropdownOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  React.useEffect(() => setMounted(true), []);
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
@@ -34,18 +37,21 @@ export const TopNav = ({ scrollToSection }: { scrollToSection: (e: React.MouseEv
         </Link>
 
         <nav className="hidden lg:flex items-center gap-1.5 md:gap-3">
-          <a href="#hero" onClick={(e) => scrollToSection(e, "hero")} className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-slate-100 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-950 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-black text-[11px] md:text-sm text-slate-700 dark:text-slate-300 transition-all active:translate-y-0.5 active:border-b-0">
+          <a href="/#hero" onClick={(e) => scrollToSection ? scrollToSection(e, "hero") : null} className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-slate-100 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-950 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-black text-[11px] md:text-sm text-slate-700 dark:text-slate-300 transition-all active:translate-y-0.5 active:border-b-0">
             <Home size={16} className="text-slate-500 dark:text-slate-400" /> <span>الرئيسية</span>
           </a>
-          <a href="#about-section" onClick={(e) => scrollToSection(e, "about-section")} className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-slate-100 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-950 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-black text-[11px] md:text-sm text-slate-700 dark:text-slate-300 transition-all active:translate-y-0.5 active:border-b-0">
+          <a href="/#about-section" onClick={(e) => scrollToSection ? scrollToSection(e, "about-section") : null} className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-slate-100 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-950 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-black text-[11px] md:text-sm text-slate-700 dark:text-slate-300 transition-all active:translate-y-0.5 active:border-b-0">
             <Info size={16} className="text-purple-500" /> <span>عن المنصة</span>
           </a>
-          <a href="#games-section" onClick={(e) => scrollToSection(e, "games-section")} className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-slate-100 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-950 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-black text-[11px] md:text-sm text-slate-700 dark:text-slate-300 transition-all active:translate-y-0.5 active:border-b-0">
+          <a href="/#games-section" onClick={(e) => scrollToSection ? scrollToSection(e, "games-section") : null} className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-slate-100 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-950 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-black text-[11px] md:text-sm text-slate-700 dark:text-slate-300 transition-all active:translate-y-0.5 active:border-b-0">
             <Gamepad2 size={16} className="text-emerald-500" /> <span>الألعاب والخدمات</span>
           </a>
-          <a href="#contact-section" onClick={(e) => scrollToSection(e, "contact-section")} className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-slate-100 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-950 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-black text-[11px] md:text-sm text-slate-700 dark:text-slate-300 transition-all active:translate-y-0.5 active:border-b-0">
+          <a href="/#contact-section" onClick={(e) => scrollToSection ? scrollToSection(e, "contact-section") : null} className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-slate-100 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-950 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-black text-[11px] md:text-sm text-slate-700 dark:text-slate-300 transition-all active:translate-y-0.5 active:border-b-0">
             <MessageCircle size={16} className="text-blue-500" /> <span>تواصل معنا</span>
           </a>
+          <Link href="/guides" className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-slate-100 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-950 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-black text-[11px] md:text-sm text-slate-700 dark:text-slate-300 transition-all active:translate-y-0.5 active:border-b-0">
+            <Info size={16} className="text-cyan-500" /> <span>كيف تلعب؟</span>
+          </Link>
         </nav>
 
         <div className="flex gap-1.5 md:gap-2 pr-1 md:pr-2 items-center">
@@ -105,7 +111,11 @@ export const TopNav = ({ scrollToSection }: { scrollToSection: (e: React.MouseEv
           )}
 
           <button onClick={toggleTheme} className="w-10 h-10 md:w-11 md:h-11 bg-slate-100 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-950 text-slate-600 dark:text-amber-400 rounded-xl flex items-center justify-center transition-all hover:bg-slate-200 dark:hover:bg-slate-700 active:translate-y-0.5 active:border-b-0">
-            {theme === "dark" ? <Sun size={20} className="animate-spin-slow" /> : <Moon size={20} className="animate-wiggle" />}
+            {mounted ? (
+              theme === "dark" ? <Sun size={20} className="animate-spin-slow" /> : <Moon size={20} className="animate-wiggle" />
+            ) : (
+              <div className="w-5 h-5"></div>
+            )}
           </button>
         </div>
       </div>

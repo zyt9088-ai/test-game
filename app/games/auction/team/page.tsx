@@ -5,7 +5,7 @@ import React from "react";
 import { Cairo } from "next/font/google";
 import { Moon, Sun } from "lucide-react";
 
-import { useAuctionTeam } from "@/hooks/useAuctionTeam";
+import { useAuctionTeam } from "@/hooks/games/auction/useAuctionTeam";
 import TeamAlertModal from "@/components/games/auction/team/TeamAlertModal";
 import TeamHeader from "@/components/games/auction/team/TeamHeader";
 import TeamScoreboard from "@/components/games/auction/team/TeamScoreboard";

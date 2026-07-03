@@ -87,6 +87,44 @@ export function useAuctionTeam() {
   const handleJoin = async () => {
     if (roomCode.length !== 5) { triggerAlert("الرجاء إدخال كود غرفة مكون من 5 أحرف."); return; }
     if (!teamId) { triggerAlert("الرجاء اختيار فريقك أولاً."); return; }
+    
+    let deviceId = localStorage.getItem("auction_device_id");
+    if (!deviceId) {
+      deviceId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      localStorage.setItem("auction_device_id", deviceId);
+    }
+
+    const { data: roomData, error: fetchError } = await supabase
+      .from("auction_rooms")
+      .select("t1_device_id, t2_device_id")
+      .eq("room_code", roomCode)
+      .single();
+
+    if (fetchError || !roomData) {
+      triggerAlert("رمز الغرفة غير صحيح أو اللعبة غير موجودة.");
+      return;
+    }
+
+    const colName = teamId === 1 ? "t1_device_id" : "t2_device_id";
+    const currentDeviceId = roomData[colName as keyof typeof roomData];
+
+    if (currentDeviceId && currentDeviceId !== deviceId) {
+      triggerAlert("عذراً، هذا الفريق ممتلئ! لقد دخل قائد آخر مسبقاً.");
+      return;
+    }
+
+    if (currentDeviceId !== deviceId) {
+      const { error: updateError } = await supabase
+        .from("auction_rooms")
+        .update({ [colName]: deviceId })
+        .eq("room_code", roomCode);
+
+      if (updateError) {
+        triggerAlert("حدث خطأ أثناء الانضمام للفريق.");
+        return;
+      }
+    }
+
     setIsJoined(true);
   };
 

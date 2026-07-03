@@ -1,12 +1,12 @@
 "use client";
 import React from "react";
-import { Wallet, ChevronDown, Play } from "lucide-react";
+import { Wallet, ChevronDown, Play, RefreshCw } from "lucide-react";
 
 export default function SetupState({ ctx }: { ctx: any }) {
   const {
     gameState, t1Name, setT1Name, t2Name, setT2Name,
     qCount, setQCount, isDropdownOpen, setIsDropdownOpen,
-    dropdownRef, startGame
+    dropdownRef, startGame, resetTeamDevice
   } = ctx;
 
   if (gameState !== "setup") return null;
@@ -17,11 +17,21 @@ export default function SetupState({ ctx }: { ctx: any }) {
       <h2 className="text-2xl md:text-3xl font-black mb-6 md:mb-8">إعدادات الغرفة</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 text-right mb-6 md:mb-8">
         <div>
-          <label className="block text-[10px] md:text-xs font-black text-slate-500 dark:text-slate-400 mb-1 md:mb-2">الفريق الأول</label>
+          <div className="flex justify-between items-center mb-1 md:mb-2">
+            <label className="block text-[10px] md:text-xs font-black text-slate-500 dark:text-slate-400">الفريق الأول</label>
+            <button onClick={() => resetTeamDevice(1)} title="إعادة تعيين جهاز القائد" className="text-slate-400 hover:text-rose-500 transition-colors">
+              <RefreshCw size={14} />
+            </button>
+          </div>
           <input value={t1Name} onChange={e => setT1Name(e.target.value)} className="w-full p-3 md:p-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl font-black focus:border-cyan-500 outline-none transition-colors text-sm md:text-base" />
         </div>
         <div>
-          <label className="block text-[10px] md:text-xs font-black text-slate-500 dark:text-slate-400 mb-1 md:mb-2">الفريق الثاني</label>
+          <div className="flex justify-between items-center mb-1 md:mb-2">
+            <label className="block text-[10px] md:text-xs font-black text-slate-500 dark:text-slate-400">الفريق الثاني</label>
+            <button onClick={() => resetTeamDevice(2)} title="إعادة تعيين جهاز القائد" className="text-slate-400 hover:text-rose-500 transition-colors">
+              <RefreshCw size={14} />
+            </button>
+          </div>
           <input value={t2Name} onChange={e => setT2Name(e.target.value)} className="w-full p-3 md:p-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl font-black focus:border-rose-500 outline-none transition-colors text-sm md:text-base" />
         </div>
         <div>

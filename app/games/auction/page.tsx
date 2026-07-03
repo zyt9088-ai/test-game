@@ -5,7 +5,7 @@ import React from "react";
 import { Cairo } from "next/font/google";
 import { Moon, Sun } from "lucide-react";
 
-import { useAuctionReferee } from "@/hooks/useAuctionReferee";
+import { useAuctionReferee } from "@/hooks/games/auction/useAuctionReferee";
 import QRModal from "@/components/games/auction/referee/QRModal";
 import RefereeAlertModal from "@/components/games/auction/referee/RefereeAlertModal";
 import RefereeHeader from "@/components/games/auction/referee/RefereeHeader";
@@ -40,6 +40,7 @@ export default function AuctionRefereeScreen() {
           gameState={ctx.gameState} currentIndex={ctx.currentIndex} questions={ctx.questions} 
           t1Name={ctx.t1Name} t2Name={ctx.t2Name} t1Balance={ctx.t1Balance} t2Balance={ctx.t2Balance} 
           t1Points={ctx.t1Points} t2Points={ctx.t2Points} t1Ambush={ctx.t1Ambush} t2Ambush={ctx.t2Ambush} 
+          resetTeamDevice={ctx.resetTeamDevice}
         />
       </div>
 
