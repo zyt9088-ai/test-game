@@ -40,11 +40,11 @@ export default function WorldDominationChallengesTab({ ctx }: { ctx: any }) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-            {ctx.wdChallengesDB.map((challenge: string, idx: number) => (
-              <div key={idx} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-sm gap-4 hover:border-purple-300 dark:hover:border-purple-700 transition-colors">
+            {ctx.wdChallengesDB.map((challenge: { id: string; question: string }, idx: number) => (
+              <div key={challenge.id} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-sm gap-4 hover:border-purple-300 dark:hover:border-purple-700 transition-colors">
                 <span className="text-slate-400 font-black text-lg shrink-0 w-8">{idx + 1}-</span>
-                <span className="text-slate-800 dark:text-slate-200 text-base font-bold w-full leading-relaxed">{challenge}</span>
-                <button onClick={() => ctx.deleteWdChallenge(idx)} className="text-slate-400 hover:text-white hover:bg-rose-500 bg-white dark:bg-slate-900 p-3 rounded-xl transition-colors shrink-0 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <span className="text-slate-800 dark:text-slate-200 text-base font-bold w-full leading-relaxed">{challenge.question}</span>
+                <button onClick={() => ctx.deleteWdChallenge(challenge.id)} className="text-slate-400 hover:text-white hover:bg-rose-500 bg-white dark:bg-slate-900 p-3 rounded-xl transition-colors shrink-0 border border-slate-200 dark:border-slate-800 shadow-sm">
                   <Trash2 size={20} />
                 </button>
               </div>

@@ -37,34 +37,82 @@ export function useCastleWarAdmin() {
 
   useEffect(() => {
     const fetchSettings = async () => {
-      const { data, error } = await supabase.from("cw_settings").select("*");
-      if (data && !error) {
-        data.forEach((item) => {
-          if (item.id === "admin_cw_30sec_db") setCw30SecDB(item.data);
-          if (item.id === "admin_cw_5sec_db") setCw5SecDB(item.data);
-          if (item.id === "admin_cw_team_db") setCwTeamDB(item.data);
-          if (item.id === "admin_cw_general_db") setCwGenDB(item.data);
-        });
+      // 1. Fetch questions from the new table
+      const { data: questions, error } = await supabase.from("cw_questions").select("*");
+      
+      if (questions && !error) {
+        const q30sec = questions.filter(q => q.category === '30sec').map(q => q.question);
+        const q5sec = questions.filter(q => q.category === '5sec').map(q => q.question);
+        const qTeam = questions.filter(q => q.category === 'team').map(q => q.question);
+        const qGeneral = questions.filter(q => q.category === 'general').map(q => ({
+          q: q.question,
+          a: q.answer,
+          options: q.options || [],
+          dbId: q.id // للاحتفاظ بالمعرّف للحذف لاحقاً
+        }));
+
+        setCw30SecDB(q30sec);
+        setCw5SecDB(q5sec);
+        setCwTeamDB(qTeam);
+        setCwGenDB(qGeneral);
       }
     };
     fetchSettings();
   }, [supabase]);
 
+  // دالة مساعدة لحفظ/تحديث الأسئلة النصية فقط
+  const saveTextQuestions = async (category: string, newQuestions: string[], currentQuestions: string[]) => {
+    // 1. تحديد الأسئلة الجديدة (غير الموجودة حالياً)
+    const questionsToAdd = newQuestions.filter(q => !currentQuestions.includes(q));
+    
+    // 2. تحديد الأسئلة المحذوفة (الموجودة سابقاً وغير موجودة الآن)
+    const questionsToRemove = currentQuestions.filter(q => !newQuestions.includes(q));
+
+    // تنفيذ الحذف
+    if (questionsToRemove.length > 0) {
+      await supabase.from("cw_questions").delete().eq("category", category).in("question", questionsToRemove);
+    }
+
+    // تنفيذ الإضافة
+    if (questionsToAdd.length > 0) {
+      const inserts = questionsToAdd.map(q => ({ category, question: q }));
+      await supabase.from("cw_questions").insert(inserts);
+    }
+  };
+
   const saveCw30Data = async (newData: string[]) => {
+    await saveTextQuestions('30sec', newData, cw30SecDB);
     setCw30SecDB(newData);
-    await supabase.from("cw_settings").upsert({ id: "admin_cw_30sec_db", data: newData });
   };
   const saveCw5Data = async (newData: string[]) => {
+    await saveTextQuestions('5sec', newData, cw5SecDB);
     setCw5SecDB(newData);
-    await supabase.from("cw_settings").upsert({ id: "admin_cw_5sec_db", data: newData });
   };
   const saveCwTeamData = async (newData: string[]) => {
+    await saveTextQuestions('team', newData, cwTeamDB);
     setCwTeamDB(newData);
-    await supabase.from("cw_settings").upsert({ id: "admin_cw_team_db", data: newData });
   };
+  
+  // حفظ أسئلة العام
   const saveCwGenData = async (newData: CWQuestion[]) => {
-    setCwGenDB(newData);
-    await supabase.from("cw_settings").upsert({ id: "admin_cw_general_db", data: newData });
+    // الواجهة تمرر جميع الأسئلة الحالية والجديدة، لذلك الأفضل استخدام طريقة ذكية
+    // سيتم تنفيذ الحفظ داخل دوال الإضافة/الحذف أدناه لتجنب التعقيد، لكن إذا استدعيت هذه الدالة للملفات المرفوعة:
+    const newItems = newData.filter(item => !(item as any).dbId);
+    if (newItems.length > 0) {
+      const inserts = newItems.map(item => ({
+        category: 'general',
+        question: item.q,
+        answer: item.a,
+        options: item.options
+      }));
+      await supabase.from("cw_questions").insert(inserts);
+      
+      // إعادة الجلب لتحديث الـ dbId
+      const { data: newQData } = await supabase.from("cw_questions").select("*").eq("category", "general");
+      if (newQData) {
+        setCwGenDB(newQData.map(q => ({ q: q.question, a: q.answer, options: q.options || [], dbId: q.id })));
+      }
+    }
   };
 
   const exportToJsonFile = (data: any, filename: string) => {

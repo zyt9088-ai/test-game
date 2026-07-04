@@ -71,29 +71,17 @@ export function useAdminDashboard() {
 
     const fetchWDStats = async () => {
       try {
-        const { data, error } = await supabase.from("wd_settings").select("*");
-        if (data && !error) {
-          let countriesCount = 0, questionsCount = 0, challengesCount = 0;
-          let details: { name: string; qCount: number }[] = [];
+        const { count: countriesCount } = await supabase.from("wd_countries").select("*", { count: 'exact', head: true });
+        const { count: questionsCount } = await supabase.from("wd_country_questions").select("*", { count: 'exact', head: true });
+        const { count: challengesCount } = await supabase.from("wd_challenges").select("*", { count: 'exact', head: true });
 
-          data.forEach((item) => {
-            if (item.id === "admin_wd_countries_db" && item.data) {
-              countriesCount = item.data.length;
-              item.data.forEach((c: any) => {
-                const qCount = c.questions ? c.questions.length : 0;
-                questionsCount += qCount;
-                details.push({ name: c.name, qCount });
-              });
-              localStorage.setItem("admin_wd_countries_db", JSON.stringify(item.data));
-            }
-            if (item.id === "admin_wd_challenges_db" && item.data) {
-              challengesCount = item.data.length;
-              localStorage.setItem("admin_wd_challenges_db", JSON.stringify(item.data));
-            }
-          });
-
-          setWdStats({ countries: countriesCount, questions: questionsCount, challenges: challengesCount, countryDetails: details });
-        }
+        // للتبسيط في لوحة التحكم، سنحسب الإجماليات فقط
+        setWdStats({ 
+          countries: countriesCount || 0, 
+          questions: questionsCount || 0, 
+          challenges: challengesCount || 0, 
+          countryDetails: [] 
+        });
       } catch (error) {
         console.error("Error fetching WD stats", error);
       }
@@ -101,14 +89,14 @@ export function useAdminDashboard() {
 
     const fetchCWStats = async () => {
       try {
-        const { data, error } = await supabase.from("cw_settings").select("*");
-        if (data && !error) {
+        const { data } = await supabase.from("cw_questions").select("category");
+        if (data) {
           let q30 = 0, q5 = 0, team = 0, general = 0;
-          data.forEach((item) => {
-            if (item.id === "admin_cw_30sec_db") q30 = item.data?.length || 0;
-            if (item.id === "admin_cw_5sec_db") q5 = item.data?.length || 0;
-            if (item.id === "admin_cw_team_db") team = item.data?.length || 0;
-            if (item.id === "admin_cw_general_db") general = item.data?.length || 0;
+          data.forEach(q => {
+            if (q.category === '30sec') q30++;
+            if (q.category === '5sec') q5++;
+            if (q.category === 'team') team++;
+            if (q.category === 'general') general++;
           });
           setCwStats({ q30, q5, team, general });
         }
@@ -119,14 +107,8 @@ export function useAdminDashboard() {
 
     const fetchAWStats = async () => {
       try {
-        const { data, error } = await supabase.from("aw_settings").select("*");
-        if (data && !error) {
-          let questions = 0;
-          data.forEach((item) => {
-            if (item.id === "admin_aw_questions_db") questions = item.data?.length || 0;
-          });
-          setAwStats({ questions });
-        }
+        const { count: questions } = await supabase.from("aw_questions").select("*", { count: 'exact', head: true });
+        setAwStats({ questions: questions || 0 });
       } catch (error) {
         console.error("Error fetching AW stats", error);
       }

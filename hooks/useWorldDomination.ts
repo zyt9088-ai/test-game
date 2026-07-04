@@ -125,30 +125,60 @@ export function useWorldDomination() {
         );
       }
 
-      // جلب جميع البيانات من wd_settings (نفس المصدر الذي يحفظ فيه الآدمن)
+      // جلب جميع البيانات من الجداول الجديدة المستقلة
       try {
-        const { data, error } = await supabase.from("wd_settings").select("*");
-        if (data && !error) {
-          data.forEach((item) => {
-            // قراءة الإعدادات العامة (حد الدول وعدد التحديات)
+        // 1. جلب الإعدادات (تبقى في wd_settings)
+        const { data: settingsData } = await supabase.from("wd_settings").select("*");
+        if (settingsData) {
+          settingsData.forEach((item) => {
             if (item.key === "countries_limit" && item.value !== undefined) {
               setCountriesLimit(Number(item.value));
             }
             if (item.key === "challenges_count" && item.value !== undefined) {
               setChallengesCount(Number(item.value));
             }
-
-            // قراءة الدول وأسئلتها (المصدر الصحيح: admin_wd_countries_db)
-            if (item.id === "admin_wd_countries_db" && item.data) {
-              setDbCountries(item.data);
-            }
-
-            // قراءة تحديات الحكم (المصدر الصحيح: admin_wd_challenges_db)
-            if (item.id === "admin_wd_challenges_db" && item.data) {
-              setDbWdChallenges(item.data);
-            }
           });
         }
+
+        // 2. جلب الدول
+        const { data: countriesData } = await supabase.from("wd_countries").select("*");
+        
+        // 3. جلب الأسئلة
+        const { data: questionsData } = await supabase.from("wd_country_questions").select("*");
+        
+        // تجميع الدول مع أسئلتها بالهيكلة المعتمدة للعبة
+        if (countriesData) {
+          const mappedCountries = countriesData.map((country, index) => {
+            const cQuestions = (questionsData || [])
+              .filter(q => q.country_id === country.id)
+              .map(q => ({
+                q: q.question,
+                options: q.options || [],
+                a: q.answer || ""
+              }));
+
+            return {
+              id: `db-${index}`,
+              name: country.name,
+              geoId: country.geo_id || "",
+              questions: cQuestions,
+              value: 0,
+              isActive: true,
+              isChallenge: false,
+              owner: null,
+              lastOwner: null,
+              originalValue: 0
+            };
+          });
+          setDbCountries(mappedCountries);
+        }
+
+        // 4. جلب تحديات الحكم
+        const { data: challengesData } = await supabase.from("wd_challenges").select("*");
+        if (challengesData) {
+          setDbWdChallenges(challengesData.map(c => c.question));
+        }
+
       } catch (e) {
         console.error("خطأ في جلب بيانات اللعبة:", e);
       }

@@ -21,45 +21,74 @@ export function useWorldDominationAdmin() {
   const [wdOpt3, setWdOpt3] = useState<string>("");
   const [wdCorrectOpt, setWdCorrectOpt] = useState<number>(1);
 
-  const [wdChallengesDB, setWdChallengesDB] = useState<string[]>([]);
+  // تحديات الحكم ستصبح كائنات لتخزين الـ ID والـ Question
+  const [wdChallengesDB, setWdChallengesDB] = useState<{ id: string; question: string }[]>([]);
   const [newWdChallenge, setNewWdChallenge] = useState<string>("");
 
   const formRef = useRef<HTMLDivElement>(null);
   const questionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        const { data, error } = await supabase.from("wd_settings").select("*");
-        if (data && !error) {
-          data.forEach((item) => {
-            if (item.id === "admin_wd_countries_db") setWdCountries(item.data);
-            if (item.id === "admin_wd_challenges_db") setWdChallengesDB(item.data);
-          });
-        }
-      } catch (e) {
-        console.error("Error loading WD data:", e);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     loadData();
   }, [supabase]);
 
-  const saveToSupabase = async (id: string, data: any) => {
+  const loadData = async () => {
+    setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from("wd_settings")
-        .upsert({ id, data, updated_at: new Date().toISOString() });
+      // 1. جلب الدول
+      const { data: countriesData, error: countriesError } = await supabase
+        .from("wd_countries")
+        .select("*");
+      
+      if (countriesError) throw countriesError;
+
+      // 2. جلب الأسئلة
+      const { data: questionsData, error: questionsError } = await supabase
+        .from("wd_country_questions")
+        .select("*");
         
-      if (error) {
-        console.error("تفاصيل الخطأ من Supabase:", error);
-        toast.error("تعذر الحفظ في قاعدة البيانات ❌: " + error.message);
-      }
-    } catch (err) {
-      console.error("خطأ عام:", err);
-      toast.error("مشكلة في الاتصال بالسيرفر!");
+      if (questionsError) throw questionsError;
+
+      // 3. جلب التحديات
+      const { data: challengesData, error: challengesError } = await supabase
+        .from("wd_challenges")
+        .select("*");
+        
+      if (challengesError) throw challengesError;
+
+      // دمج الدول مع أسئلتها بالصيغة القديمة التي تستخدمها الواجهة
+      const formattedCountries: WDCountry[] = (countriesData || []).map((country) => {
+        const countryQuestions = (questionsData || [])
+          .filter((q) => q.country_id === country.id)
+          .map((q) => ({
+            dbId: q.id, // نحفظ الآيدي للحذف لاحقاً
+            q: q.question,
+            options: q.options || [],
+            a: q.answer || ""
+          }));
+
+        return {
+          id: country.id,
+          geoId: country.geo_id,
+          name: country.name,
+          questions: countryQuestions,
+          value: 0,
+          isActive: true,
+          isChallenge: false,
+          owner: null,
+          lastOwner: null,
+          originalValue: 0
+        };
+      });
+
+      setWdCountries(formattedCountries);
+      setWdChallengesDB(challengesData || []);
+      
+    } catch (e: any) {
+      console.error("Error loading WD data:", e);
+      toast.error("حدث خطأ أثناء جلب البيانات!");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -82,22 +111,34 @@ export function useWorldDominationAdmin() {
     }
 
     if (editingCountryId) {
-      const newData = wdCountries.map((c) =>
-        c.id === editingCountryId ? { ...c, name: newWdCountryName.trim(), geoId: selectedGeoId } : c
-      );
-      setWdCountries(newData);
-      await saveToSupabase("admin_wd_countries_db", newData);
+      const { error } = await supabase
+        .from("wd_countries")
+        .update({ name: newWdCountryName.trim(), geo_id: selectedGeoId })
+        .eq("id", editingCountryId);
+
+      if (error) {
+        toast.error("تعذر التعديل: " + error.message);
+        return;
+      }
+      
       setEditingCountryId(null);
+      await loadData();
+      toast.success("تم التعديل بنجاح");
     } else {
-      const newCountry: WDCountry = {
-        id: `c_${Date.now()}`, geoId: selectedGeoId, name: newWdCountryName.trim(), value: 0, questions: [],
-        isActive: true, isChallenge: false, owner: null, lastOwner: null, originalValue: 0
-      };
-      const newData = [...wdCountries, newCountry];
-      setWdCountries(newData);
-      await saveToSupabase("admin_wd_countries_db", newData);
-      setManagingQuestionsFor(newCountry.id);
+      const newId = `c_${Date.now()}`;
+      const { error } = await supabase
+        .from("wd_countries")
+        .insert({ id: newId, geo_id: selectedGeoId, name: newWdCountryName.trim() });
+
+      if (error) {
+        toast.error("تعذر الإضافة: " + error.message);
+        return;
+      }
+      
+      await loadData();
+      setManagingQuestionsFor(newId);
       scrollToQuestions();
+      toast.success("تمت الإضافة بنجاح");
     }
     setNewWdCountryName("");
     setSelectedGeoId(null);
@@ -117,12 +158,21 @@ export function useWorldDominationAdmin() {
   };
 
   const deleteWdCountry = async (id: string) => {
-    if (confirm("هل أنت متأكد من حذف هذه الدولة بالكامل؟")) {
-      const newData = wdCountries.filter((c) => c.id !== id);
-      setWdCountries(newData);
-      await saveToSupabase("admin_wd_countries_db", newData);
+    if (confirm("هل أنت متأكد من حذف هذه الدولة بالكامل (مع أسئلتها)؟")) {
+      const { error } = await supabase
+        .from("wd_countries")
+        .delete()
+        .eq("id", id);
+        
+      if (error) {
+        toast.error("تعذر الحذف: " + error.message);
+        return;
+      }
+      
+      await loadData();
       if (editingCountryId === id) cancelEditWdCountry();
       if (managingQuestionsFor === id) setManagingQuestionsFor(null);
+      toast.success("تم الحذف بنجاح");
     }
   };
 
@@ -135,43 +185,80 @@ export function useWorldDominationAdmin() {
     const options = [wdOpt1.trim(), wdOpt2.trim(), wdOpt3.trim()];
     const answer = options[wdCorrectOpt - 1];
 
-    const newData = wdCountries.map((c) => {
-      if (c.id === managingQuestionsFor) {
-        return { ...c, questions: [...(c.questions || []), { q: newWdQ.trim(), options, a: answer }] };
-      }
-      return c;
-    });
-    setWdCountries(newData);
-    await saveToSupabase("admin_wd_countries_db", newData);
+    const { error } = await supabase
+      .from("wd_country_questions")
+      .insert({
+        country_id: managingQuestionsFor,
+        question: newWdQ.trim(),
+        options: options,
+        answer: answer
+      });
 
+    if (error) {
+      toast.error("تعذر إضافة السؤال: " + error.message);
+      return;
+    }
+
+    await loadData();
     setNewWdQ(""); setWdOpt1(""); setWdOpt2(""); setWdOpt3(""); setWdCorrectOpt(1);
+    toast.success("تمت إضافة السؤال بنجاح");
   };
 
   const deleteWdQuestion = async (qIndex: number) => {
-    const newData = wdCountries.map((c) => {
-      if (c.id === managingQuestionsFor) {
-        const updatedQ = [...(c.questions || [])];
-        updatedQ.splice(qIndex, 1);
-        return { ...c, questions: updatedQ };
-      }
-      return c;
-    });
-    setWdCountries(newData);
-    await saveToSupabase("admin_wd_countries_db", newData);
+    const country = wdCountries.find(c => c.id === managingQuestionsFor);
+    if (!country || !country.questions) return;
+    
+    // @ts-ignore
+    const questionDbId = country.questions[qIndex].dbId;
+    if (!questionDbId) {
+       toast.error("لا يمكن حذف السؤال (معرّف مفقود)");
+       return;
+    }
+
+    const { error } = await supabase
+      .from("wd_country_questions")
+      .delete()
+      .eq("id", questionDbId);
+
+    if (error) {
+      toast.error("تعذر الحذف: " + error.message);
+      return;
+    }
+
+    await loadData();
+    toast.success("تم حذف السؤال بنجاح");
   };
 
   const addWdChallenge = async () => {
     if (!newWdChallenge.trim()) return;
-    const newData = [...wdChallengesDB, newWdChallenge.trim()];
-    setWdChallengesDB(newData);
-    await saveToSupabase("admin_wd_challenges_db", newData);
+    
+    const { error } = await supabase
+      .from("wd_challenges")
+      .insert({ question: newWdChallenge.trim() });
+
+    if (error) {
+      toast.error("تعذر إضافة التحدي: " + error.message);
+      return;
+    }
+
+    await loadData();
     setNewWdChallenge("");
+    toast.success("تمت إضافة التحدي بنجاح");
   };
 
-  const deleteWdChallenge = async (idx: number) => {
-    const newData = wdChallengesDB.filter((_, i) => i !== idx);
-    setWdChallengesDB(newData);
-    await saveToSupabase("admin_wd_challenges_db", newData);
+  const deleteWdChallenge = async (id: string) => {
+    const { error } = await supabase
+      .from("wd_challenges")
+      .delete()
+      .eq("id", id);
+      
+    if (error) {
+      toast.error("تعذر حذف التحدي: " + error.message);
+      return;
+    }
+
+    await loadData();
+    toast.success("تم حذف التحدي بنجاح");
   };
 
   return {

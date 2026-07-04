@@ -212,14 +212,21 @@ export function useCastleWar() {
 
         await supabase.from("cw_rooms").upsert({ room_code: newRoomCode, live_sync: {} });
 
-        const { data } = await supabase.from("cw_settings").select("*");
-        if (data) {
-          data.forEach((item) => {
-            if (item.id === "admin_cw_30sec_db") setCw30SecDB(item.data);
-            if (item.id === "admin_cw_5sec_db") setCw5SecDB(item.data);
-            if (item.id === "admin_cw_team_db") setCwTeamDB(item.data);
-            if (item.id === "admin_cw_general_db") setCwGenDB(item.data);
-          });
+        const { data: questions } = await supabase.from("cw_questions").select("*");
+        if (questions) {
+          const q30sec = questions.filter(q => q.category === '30sec').map(q => q.question);
+          const q5sec = questions.filter(q => q.category === '5sec').map(q => q.question);
+          const qTeam = questions.filter(q => q.category === 'team').map(q => q.question);
+          const qGeneral = questions.filter(q => q.category === 'general').map(q => ({
+            q: q.question,
+            a: q.answer,
+            options: q.options || [],
+          }));
+
+          setCw30SecDB(q30sec);
+          setCw5SecDB(q5sec);
+          setCwTeamDB(qTeam);
+          setCwGenDB(qGeneral);
         }
       } catch (err) {
         console.error(err);

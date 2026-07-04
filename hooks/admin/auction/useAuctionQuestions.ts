@@ -45,36 +45,54 @@ export function useAuctionQuestions() {
 
   useEffect(() => {
     const loadQuestions = async () => {
-      const localData = localStorage.getItem("admin_aw_questions_db");
-      if (localData) {
-        setQuestions(JSON.parse(localData));
-      }
+      setIsLoading(true);
+      const { data, error } = await supabase.from("aw_questions").select("*");
 
-      const { data, error } = await supabase
-        .from("aw_settings")
-        .select("*")
-        .eq("id", "admin_aw_questions_db")
-        .single();
-
-      if (data && data.data) {
-        setQuestions(data.data);
-        localStorage.setItem("admin_aw_questions_db", JSON.stringify(data.data));
+      if (data && !error) {
+        setQuestions(data.map(q => ({
+          id: q.id,
+          category: q.category || "عام",
+          question: q.question,
+          options: q.options || [],
+          answer: q.answer
+        })));
       }
       setIsLoading(false);
     };
     loadQuestions();
   }, [supabase]);
 
+  // دالة مساعدة لحفظ الإضافات/التعديلات/الحذف
   const handleSaveDB = async (updatedQuestions: AuctionQuestion[]) => {
     setIsSaving(true);
     setQuestions(updatedQuestions);
-    localStorage.setItem("admin_aw_questions_db", JSON.stringify(updatedQuestions));
 
-    await supabase.from("aw_settings").upsert({
-      id: "admin_aw_questions_db",
-      data: updatedQuestions,
-      updated_at: new Date().toISOString(),
-    });
+    // للمزامنة، نحدد المضاف والمحذوف
+    // للسهولة، سنقوم بحذف كل شيء وإعادة إدراجه إن كان العدد قليلاً أو استخدام upsert
+    // وبما أن لدينا IDs يمكننا التحديث، لكن الأفضل هو تنفيذ الإدراج/التحديث عبر loop
+    
+    for (const q of updatedQuestions) {
+      await supabase.from("aw_questions").upsert({
+        id: q.id.includes('-') ? q.id : undefined, // إذا كان UUID صحيح نرسله
+        category: q.category,
+        question: q.question,
+        options: q.options,
+        answer: q.answer
+      });
+    }
+    
+    // إعادة جلب الأسئلة للحصول على الـ IDs الصحيحة إذا كانت جديدة
+    const { data } = await supabase.from("aw_questions").select("*");
+    if (data) {
+      setQuestions(data.map(q => ({
+        id: q.id,
+        category: q.category || "عام",
+        question: q.question,
+        options: q.options || [],
+        answer: q.answer
+      })));
+    }
+
     setIsSaving(false);
   };
 

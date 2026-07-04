@@ -158,16 +158,11 @@ export function useAuctionReferee() {
   };
 
   const startGame = async () => {
-    const { data, error } = await supabase
-      .from("aw_settings")
-      .select("data")
-      .eq("id", "admin_aw_questions_db")
-      .single();
+    const { data: realQuestions, error } = await supabase
+      .from("aw_questions")
+      .select("*");
 
-    let realQuestions = [];
-    if (data && data.data && data.data.length > 0) {
-      realQuestions = data.data;
-    } else {
+    if (!realQuestions || realQuestions.length === 0) {
       triggerAlert("بنك الأسئلة فاضي! روح للوحة التحكم وضيف أسئلة قبل تبدأ اللعبة.");
       return; 
     }
