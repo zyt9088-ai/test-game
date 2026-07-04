@@ -25,7 +25,7 @@ export default function AdminDashboardMain() {
 
   const {
     isAuthChecking, wdStats, cwStats, awStats,
-    handleLogout, handleExportBackup, handleImportBackup
+    handleLogout, handleExportBackup, handleImportBackup, handleMigrateFromOldTables
   } = useAdminDashboard();
 
   if (isAuthChecking) {
@@ -77,10 +77,14 @@ export default function AdminDashboardMain() {
           </div>
         </header>
 
-        <section className="flex-1 flex flex-col items-center">
+        <section className="flex-1 flex flex-col items-center gap-6">
           <AdminStatsSection wdStats={wdStats} cwStats={cwStats} awStats={awStats} />
           <AdminGamesLinks />
-          <AdminBackupSection handleExportBackup={handleExportBackup} handleImportBackup={handleImportBackup} />
+          <AdminBackupSection 
+            handleExportBackup={handleExportBackup} 
+            handleImportBackup={handleImportBackup} 
+            handleMigrateFromOldTables={handleMigrateFromOldTables}
+          />
         </section>
       </div>
     </main>
