@@ -191,7 +191,8 @@ export default function PlayerLoginPage() {
           password: authPassword,
         });
         if (error) throw error;
-        router.push("/");
+        // نستخدم window.location.href بدلاً من router.push لضمان أن Middleware يقرأ الكوكيز الجديدة
+        window.location.href = "/";
       } catch (error: any) {
         console.error("Email auth error:", error);
         setNotification({ isOpen: true, message: "تأكد من صحة البيانات أو إن الحساب غير موجود مسبقاً.", type: "error" });
