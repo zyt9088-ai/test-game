@@ -45,7 +45,16 @@ export default function TeamJoinState({ ctx }: { ctx: any }) {
         </div>
       </div>
 
-      <button onClick={ctx.handleJoin} className="w-full mt-8 py-4 bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-black text-xl rounded-xl border-b-4 border-yellow-700 active:border-b-0 active:translate-y-[4px] transition-all shadow-md">
+      <button 
+        disabled={(ctx.teamId === 1 && isT1Full) || (ctx.teamId === 2 && isT2Full)}
+        onClick={ctx.handleJoin} 
+        className={`w-full mt-8 py-4 font-black text-xl rounded-xl border-b-4 transition-all shadow-md flex items-center justify-center gap-2 ${
+          (ctx.teamId === 1 && isT1Full) || (ctx.teamId === 2 && isT2Full)
+            ? "bg-slate-300 border-slate-400 text-slate-500 cursor-not-allowed opacity-80"
+            : "bg-yellow-500 hover:bg-yellow-400 text-slate-900 border-yellow-700 active:border-b-0 active:translate-y-[4px]"
+        }`}
+      >
+        {((ctx.teamId === 1 && isT1Full) || (ctx.teamId === 2 && isT2Full)) ? <Lock size={24} /> : null}
         دخول للعبة
       </button>
     </div>

@@ -30,10 +30,10 @@ export function useAuctionTeam() {
       const r = params.get("room");
       if (r) setRoomCode(r.toUpperCase());
 
-      let dId = localStorage.getItem("auction_device_id");
+      let dId = sessionStorage.getItem("auction_device_id");
       if (!dId) {
         dId = Math.random().toString(36).substring(2) + Date.now().toString(36);
-        localStorage.setItem("auction_device_id", dId);
+        sessionStorage.setItem("auction_device_id", dId);
       }
       setDeviceId(dId);
     }
@@ -113,45 +113,34 @@ export function useAuctionTeam() {
   }, [isJoined, roomCode]);
 
   const handleJoin = async () => {
-    if (roomCode.length !== 5) { triggerAlert("الرجاء إدخال كود غرفة مكون من 5 أحرف."); return; }
-    if (!teamId) { triggerAlert("الرجاء اختيار فريقك أولاً."); return; }
+    if (!roomCode || roomCode.length !== 5 || !teamId || !deviceId) return;
+
+    const colName = teamId === 1 ? "t1_device_id" : "t2_device_id";
+
+    // 1. Check if we already own the team (e.g. refreshed the page)
+    const { data: currentRoom } = await supabase.from("auction_rooms").select(colName).eq("room_code", roomCode).neq("t1_name", Date.now().toString()).single();
     
-    let deviceId = localStorage.getItem("auction_device_id");
-    if (!deviceId) {
-      deviceId = Math.random().toString(36).substring(2) + Date.now().toString(36);
-      localStorage.setItem("auction_device_id", deviceId);
-    }
-
-    const { data: roomData, error: fetchError } = await supabase
-      .from("auction_rooms")
-      .select("t1_device_id, t2_device_id")
-      .eq("room_code", roomCode)
-      .neq("t1_name", Date.now().toString()) // CACHE BUSTER
-      .single();
-
-    if (fetchError || !roomData) {
+    if (!currentRoom) {
       triggerAlert("رمز الغرفة غير صحيح أو اللعبة غير موجودة.");
       return;
     }
 
-    const colName = teamId === 1 ? "t1_device_id" : "t2_device_id";
-    const currentDeviceId = roomData[colName as keyof typeof roomData];
-
-    if (currentDeviceId && currentDeviceId !== deviceId) {
-      triggerAlert("عذراً، هذا الفريق ممتلئ! لقد دخل قائد آخر مسبقاً.");
+    if (currentRoom[colName] === deviceId) {
+      setIsJoined(true);
       return;
     }
 
-    if (currentDeviceId !== deviceId) {
-      const { error: updateError } = await supabase
-        .from("auction_rooms")
-        .update({ [colName]: deviceId })
-        .eq("room_code", roomCode);
+    // 2. Try to claim the team ATOMICALLY (Compare-and-Swap). Only works if it is currently NULL!
+    const { data: updateData } = await supabase
+      .from("auction_rooms")
+      .update({ [colName]: deviceId })
+      .eq("room_code", roomCode)
+      .is(colName, null)
+      .select();
 
-      if (updateError) {
-        triggerAlert("حدث خطأ أثناء الانضمام للفريق.");
-        return;
-      }
+    if (!updateData || updateData.length === 0) {
+      triggerAlert("عذراً، هذا الفريق ممتلئ! لقد دخل قائد آخر مسبقاً.");
+      return;
     }
 
     setIsJoined(true);
@@ -175,25 +164,23 @@ export function useAuctionTeam() {
     const myBalance = teamId === 1 ? liveData.t1_balance : liveData.t2_balance;
     if (Number(myBid) > myBalance) { triggerAlert("لا يمكنك المزايدة بأكثر من رصيدك الحالي."); return; }
     
-    // Strict Device ID check
-    const { data: checkRoom } = await supabase
+    const colName = teamId === 1 ? "t1_bid" : "t2_bid";
+    const deviceIdCol = teamId === 1 ? "t1_device_id" : "t2_device_id";
+
+    // ATOMIC BID: Only allow update if the database still registers THIS device as the leader!
+    const { data: updateData } = await supabase
       .from("auction_rooms")
-      .select("t1_device_id, t2_device_id")
+      .update({ [colName]: Number(myBid) })
       .eq("room_code", roomCode)
-      .neq("t1_name", Date.now().toString()) // CACHE BUSTER
-      .single();
-    if (checkRoom) {
-      const requiredId = teamId === 1 ? checkRoom.t1_device_id : checkRoom.t2_device_id;
-      const deviceId = localStorage.getItem("auction_device_id");
-      if (requiredId && requiredId !== deviceId) {
-        triggerAlert("عذراً! لقد تم تسجيل دخول قائد آخر لهذا الفريق.");
-        handleLeave();
-        return;
-      }
+      .eq(deviceIdCol, deviceId) // Critical Security Check
+      .select();
+
+    if (!updateData || updateData.length === 0) {
+      triggerAlert("عذراً! لقد تم تسجيل دخول قائد آخر لهذا الفريق وتم سحب الصلاحية منك.");
+      handleLeave();
+      return;
     }
 
-    const colName = teamId === 1 ? "t1_bid" : "t2_bid";
-    await supabase.from("auction_rooms").update({ [colName]: Number(myBid) }).eq("room_code", roomCode);
     triggerAlert("تم إرسال مزايدتك للحكم بنجاح! 🚀");
   };
 
