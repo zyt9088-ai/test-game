@@ -15,7 +15,8 @@ export function useAuctionTeam() {
   const [liveData, setLiveData] = useState<any>(null);
   const [myBid, setMyBid] = useState<number | "">("");
   
-  const [roomInfo, setRoomInfo] = useState<{t1_name: string, t2_name: string} | null>(null);
+  const [roomInfo, setRoomInfo] = useState<{t1_name: string, t2_name: string, t1_device_id?: string | null, t2_device_id?: string | null} | null>(null);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
 
   const [alertConfig, setAlertConfig] = useState<{ show: boolean; message: string }>({ show: false, message: "" });
   
@@ -28,6 +29,13 @@ export function useAuctionTeam() {
       const params = new URLSearchParams(window.location.search);
       const r = params.get("room");
       if (r) setRoomCode(r.toUpperCase());
+
+      let dId = localStorage.getItem("auction_device_id");
+      if (!dId) {
+        dId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem("auction_device_id", dId);
+      }
+      setDeviceId(dId);
     }
   }, []);
 
@@ -39,7 +47,7 @@ export function useAuctionTeam() {
   useEffect(() => {
     if (roomCode.length === 5) {
       const fetchNames = async () => {
-        const { data } = await supabase.from("auction_rooms").select("t1_name, t2_name").eq("room_code", roomCode).single();
+        const { data } = await supabase.from("auction_rooms").select("t1_name, t2_name, t1_device_id, t2_device_id").eq("room_code", roomCode).neq("t1_name", Date.now().toString()).single();
         if (data) setRoomInfo(data);
         else setRoomInfo(null);
       };
@@ -47,7 +55,10 @@ export function useAuctionTeam() {
 
       const nameChannel = supabase.channel('names_sync')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'auction_rooms', filter: `room_code=eq.${roomCode}` }, (payload) => {
-           setRoomInfo({ t1_name: payload.new.t1_name, t2_name: payload.new.t2_name });
+           setRoomInfo({ 
+             t1_name: payload.new.t1_name, t2_name: payload.new.t2_name,
+             t1_device_id: payload.new.t1_device_id, t2_device_id: payload.new.t2_device_id
+           });
         }).subscribe();
 
       return () => { supabase.removeChannel(nameChannel); };
@@ -194,7 +205,7 @@ export function useAuctionTeam() {
 
   return {
     mounted, isDark, setIsDark, roomCode, setRoomCode, teamId, setTeamId, isJoined,
-    liveData, myBid, setMyBid, roomInfo, alertConfig,
+    liveData, myBid, setMyBid, roomInfo, alertConfig, deviceId,
     triggerAlert, closeAlert, handleJoin, handleLeave, handleSendBid,
     myName, myBalance, myPoints, myAmbush, activeQuestion
   };
