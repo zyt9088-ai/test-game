@@ -125,6 +125,22 @@ export function useAuctionReferee() {
 
   useEffect(() => {
     if (!roomCode) return;
+
+    const fetchBidsFallback = async () => {
+      const { data } = await supabase.from("auction_rooms").select("t1_bid, t2_bid").eq("room_code", roomCode).single();
+      if (data) {
+        if (data.t1_bid !== null && data.t1_bid !== undefined) setT1Bid(data.t1_bid);
+        if (data.t2_bid !== null && data.t2_bid !== undefined) setT2Bid(data.t2_bid);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchBidsFallback();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     const channel = supabase.channel('referee_sync')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'auction_rooms', filter: `room_code=eq.${roomCode}` }, (payload) => {
         const newData = payload.new as any;
@@ -132,7 +148,11 @@ export function useAuctionReferee() {
         if (newData.t2_bid !== null && newData.t2_bid !== undefined) setT2Bid(newData.t2_bid);
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+      
+    return () => { 
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      supabase.removeChannel(channel); 
+    };
   }, [roomCode]);
 
   const copyLink = () => {

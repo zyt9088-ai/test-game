@@ -61,13 +61,27 @@ export function useAuctionTeam() {
 
     const fetchInitialData = async () => {
       const { data } = await supabase.from("auction_rooms").select("*").eq("room_code", roomCode).single();
-      if (data) setLiveData(data);
-      else {
+      if (data) {
+        setLiveData((prev: any) => {
+          if (data.game_state === "bidding" && prev?.game_state !== "bidding") {
+             setMyBid("");
+          }
+          return data;
+        });
+      } else {
         triggerAlert("رمز الغرفة غير صحيح أو أن اللعبة لم تبدأ بعد.");
         setIsJoined(false);
       }
     };
     fetchInitialData();
+
+    // Fetch data when user returns to the tab (fixes mobile sleep without continuous polling)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchInitialData();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     const channel = supabase.channel('team_sync')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'auction_rooms', filter: `room_code=eq.${roomCode}` }, (payload) => {
@@ -81,7 +95,10 @@ export function useAuctionTeam() {
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { 
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      supabase.removeChannel(channel); 
+    };
   }, [isJoined, roomCode]);
 
   const handleJoin = async () => {
@@ -146,6 +163,18 @@ export function useAuctionTeam() {
     const myBalance = teamId === 1 ? liveData.t1_balance : liveData.t2_balance;
     if (Number(myBid) > myBalance) { triggerAlert("لا يمكنك المزايدة بأكثر من رصيدك الحالي."); return; }
     
+    // Strict Device ID check
+    const { data: checkRoom } = await supabase.from("auction_rooms").select("t1_device_id, t2_device_id").eq("room_code", roomCode).single();
+    if (checkRoom) {
+      const requiredId = teamId === 1 ? checkRoom.t1_device_id : checkRoom.t2_device_id;
+      const deviceId = localStorage.getItem("auction_device_id");
+      if (requiredId && requiredId !== deviceId) {
+        triggerAlert("عذراً! لقد تم تسجيل دخول قائد آخر لهذا الفريق.");
+        handleLeave();
+        return;
+      }
+    }
+
     const colName = teamId === 1 ? "t1_bid" : "t2_bid";
     await supabase.from("auction_rooms").update({ [colName]: Number(myBid) }).eq("room_code", roomCode);
     triggerAlert("تم إرسال مزايدتك للحكم بنجاح! 🚀");
