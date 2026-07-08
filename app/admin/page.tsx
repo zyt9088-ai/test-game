@@ -6,12 +6,13 @@ import { Cairo } from "next/font/google";
 import { Database, LogOut, Loader2, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 
-import AdminMessagesNavigation from "./AdminMessagesNavigation";
+import AdminSidebar from "@/components/admin/layout/AdminSidebar";
+import ServerStatusButton from "@/components/admin/dashboard/ServerStatusButton";
 import { useAdminDashboard } from "@/hooks/useAdminDashboard";
 import ParticleBackground from "@/components/admin/dashboard/ParticleBackground";
 import AdminStatsSection from "@/components/admin/dashboard/AdminStatsSection";
-import AdminGamesLinks from "@/components/admin/dashboard/AdminGamesLinks";
 import AdminBackupSection from "@/components/admin/dashboard/AdminBackupSection";
+import AdminUsersSection from "@/components/admin/dashboard/users/AdminUsersSection";
 
 const cairo = Cairo({ subsets: ["arabic"], weight: ["400", "700", "900"] });
 
@@ -45,8 +46,8 @@ export default function AdminDashboardMain() {
       <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col pb-10">
         <header className="flex flex-col md:flex-row items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-4 md:p-5 shadow-sm mb-6 gap-4">
           <div className="flex items-center gap-3 md:gap-4 w-full md:w-auto justify-center md:justify-start">
-            <div className="p-3 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl text-indigo-600 shrink-0">
-              <Database size={24} />
+            <div className="p-2 bg-indigo-50 dark:bg-slate-800 rounded-xl shrink-0 flex items-center justify-center">
+              <img src="/logo.svg" alt="الشعار" className="w-10 h-10 object-contain" />
             </div>
             <div className="text-center md:text-right">
               <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white">لوحة التحكم المركزية</h1>
@@ -65,7 +66,7 @@ export default function AdminDashboardMain() {
               </button>
             )}
 
-            <AdminMessagesNavigation />
+            <ServerStatusButton />
             
             <button
               onClick={handleLogout}
@@ -77,15 +78,24 @@ export default function AdminDashboardMain() {
           </div>
         </header>
 
-        <section className="flex-1 flex flex-col items-center gap-6">
-          <AdminStatsSection wdStats={wdStats} cwStats={cwStats} awStats={awStats} />
-          <AdminGamesLinks />
-          <AdminBackupSection 
-            handleExportBackup={handleExportBackup} 
-            handleImportBackup={handleImportBackup} 
-            handleMigrateFromOldTables={handleMigrateFromOldTables}
-          />
-        </section>
+        <div className="flex flex-col md:flex-row gap-6 flex-1">
+          <AdminSidebar />
+          
+          <section className="flex-1 flex flex-col gap-6">
+            <AdminStatsSection wdStats={wdStats} cwStats={cwStats} awStats={awStats} />
+            
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-6 shadow-sm">
+              <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6">النسخ الاحتياطي وإدارة البيانات</h2>
+              <AdminBackupSection 
+                handleExportBackup={handleExportBackup} 
+                handleImportBackup={handleImportBackup} 
+                handleMigrateFromOldTables={handleMigrateFromOldTables}
+              />
+            </div>
+
+            <AdminUsersSection />
+          </section>
+        </div>
       </div>
     </main>
   );

@@ -1,0 +1,95 @@
+"use server";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
+
+function getAdminClient(cookieStore: any) {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch (error) {}
+        },
+      },
+    }
+  );
+}
+
+export async function getAdminUsers() {
+  const cookieStore = await cookies();
+  const supabase = getAdminClient(cookieStore);
+
+  const { data, error } = await supabase.auth.admin.listUsers();
+  if (error) {
+    return { error: error.message };
+  }
+
+  const users = data.users.map((user) => ({
+    id: user.id,
+    email: user.email || "",
+    phone: user.phone || user.user_metadata?.phone || "",
+    name: user.user_metadata?.name || user.user_metadata?.full_name || "بدون اسم",
+    createdAt: user.created_at,
+  }));
+
+  return { users };
+}
+
+export async function deleteAdminUser(userId: string) {
+  const cookieStore = await cookies();
+  const supabase = getAdminClient(cookieStore);
+
+  const { error } = await supabase.auth.admin.deleteUser(userId);
+  if (error) {
+    return { success: false, error: error.message };
+  }
+  
+  // Try deleting from profiles table just in case it exists and cascade didn't work
+  await supabase.from("profiles").delete().eq("id", userId);
+
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function updateAdminUser(userId: string, updates: { name?: string; phone?: string; email?: string; password?: string }) {
+  const cookieStore = await cookies();
+  const supabase = getAdminClient(cookieStore);
+
+  const authUpdates: any = {};
+  if (updates.email) authUpdates.email = updates.email;
+  if (updates.phone) authUpdates.phone = updates.phone;
+  if (updates.password && updates.password.length > 0) authUpdates.password = updates.password;
+
+  const userMetadataUpdates: any = {};
+  if (updates.name) userMetadataUpdates.name = updates.name;
+  if (updates.phone) userMetadataUpdates.phone = updates.phone;
+
+  if (Object.keys(userMetadataUpdates).length > 0) {
+    authUpdates.user_metadata = userMetadataUpdates;
+  }
+
+  const { error } = await supabase.auth.admin.updateUserById(userId, authUpdates);
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  // Sync with profiles table if it exists
+  const profileUpdates: any = {};
+  if (updates.name) profileUpdates.name = updates.name;
+  if (updates.phone) profileUpdates.phone = updates.phone;
+  if (updates.email) profileUpdates.email = updates.email;
+
+  if (Object.keys(profileUpdates).length > 0) {
+    await supabase.from("profiles").update(profileUpdates).eq("id", userId);
+  }
+
+  revalidatePath("/admin");
+  return { success: true };
+}
