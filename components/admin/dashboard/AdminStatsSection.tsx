@@ -1,76 +1,148 @@
 "use client";
-import React from "react";
-import { Globe, Swords, Gavel, MapPin, HelpCircle, Target, Clock, Timer, Activity } from "lucide-react";
+import React, { useState } from "react";
+import { Globe, Swords, Gavel, MapPin, HelpCircle, Target, Clock, Timer, Activity, ChevronDown, ChevronUp } from "lucide-react";
 
-const StatBox = ({ icon, title, count, colorTheme, className = "" }: any) => {
-  const themes = {
-    rose: "bg-white dark:bg-slate-900 border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400",
-    blue: "bg-white dark:bg-slate-900 border-blue-100 dark:border-blue-900/30 text-blue-600 dark:text-blue-400",
-    amber: "bg-white dark:bg-slate-900 border-amber-100 dark:border-amber-900/30 text-amber-600 dark:text-amber-400",
+const StatItem = ({ icon, title, count, colorTheme }: any) => {
+  const themes: Record<string, string> = {
+    rose: "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400",
+    blue: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
+    amber: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
+    emerald: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
   };
+
   return (
-    <div className={`p-4 rounded-2xl border flex items-center justify-between shadow-sm transition-all hover:scale-[1.02] ${themes[colorTheme as keyof typeof themes]} ${className}`}>
-      <div className="flex items-center gap-2"><div className="opacity-70">{icon}</div><span className="text-sm font-bold text-slate-600 dark:text-slate-400">{title}</span></div>
-      <span className="text-2xl font-black drop-shadow-sm">{count}</span>
+    <div className="flex items-center justify-between p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center gap-3">
+        <div className={`p-2.5 rounded-xl ${themes[colorTheme]}`}>
+          {icon}
+        </div>
+        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{title}</span>
+      </div>
+      <span className="text-lg font-black text-slate-900 dark:text-white px-2">{count}</span>
     </div>
   );
 };
 
 export default function AdminStatsSection({ wdStats, cwStats, awStats }: any) {
+  const [showWdDetails, setShowWdDetails] = useState(false);
+
   return (
-    <div className="w-full max-w-6xl mb-12">
-      <div className="flex items-center gap-2 mb-6 justify-center">
-        <Activity className="text-emerald-500" size={28} />
-        <h3 className="text-2xl font-black text-slate-900 dark:text-white">إحصائيات النظام</h3>
+    <div className="w-full mb-8">
+      <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4 bg-indigo-600 rounded-[2rem] p-6 text-white shadow-xl overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-900/40 rounded-full blur-3xl translate-y-1/2 -translate-x-1/4"></div>
+        
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="p-4 bg-white/20 rounded-2xl backdrop-blur-sm">
+            <Activity size={32} className="text-white" />
+          </div>
+          <div>
+            <h3 className="text-2xl md:text-3xl font-black mb-1">لوحة إحصائيات الألعاب</h3>
+            <p className="text-indigo-100 font-bold text-sm">نظرة عامة على محتوى بنوك الأسئلة في المنصة</p>
+          </div>
+        </div>
+        
+        <div className="relative z-10 flex gap-4 w-full md:w-auto">
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex-1 md:w-32 text-center">
+            <div className="text-3xl font-black mb-1">{wdStats.questions + cwStats.q30 + cwStats.q5 + cwStats.team + cwStats.general + awStats.questions}</div>
+            <div className="text-[10px] font-bold text-indigo-100">إجمالي الأسئلة</div>
+          </div>
+        </div>
       </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
+        
         {/* السيطرة على العالم */}
-        <div className="bg-slate-50 dark:bg-slate-800/80 border-2 border-blue-200 dark:border-blue-900/50 rounded-[2rem] p-6 shadow-sm flex flex-col">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2.5 bg-blue-100 dark:bg-blue-500/20 text-blue-600 rounded-xl"><Globe size={24} /></div>
-            <h4 className="text-xl font-black text-slate-800 dark:text-slate-100">السيطرة على العالم</h4>
-          </div>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <StatBox icon={<MapPin size={18} />} title="الدول" count={wdStats.countries} colorTheme="blue" />
-            <StatBox icon={<HelpCircle size={18} />} title="أسئلة" count={wdStats.questions} colorTheme="blue" />
-            <StatBox icon={<Target size={18} />} title="تحديات" count={wdStats.challenges} colorTheme="blue" className="col-span-2" />
-          </div>
-          <div className="mt-auto border-t border-blue-100 dark:border-blue-900/30 pt-4">
-            <h5 className="text-[11px] font-black text-slate-500 mb-3">تفصيل الأسئلة لكل دولة:</h5>
-            <div className="flex flex-wrap gap-2 max-h-[90px] overflow-y-auto custom-scroll pr-1">
-              {wdStats.countryDetails.map((c: any, i: number) => (
-                <div key={i} className="bg-white dark:bg-slate-900 border border-blue-100 text-blue-700 text-[10px] font-bold px-2 py-1.5 rounded-lg flex items-center gap-2">
-                  {c.name} <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-md font-black">{c.qCount}</span>
-                </div>
-              ))}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 shadow-sm flex flex-col transition-all hover:border-blue-300 dark:hover:border-blue-800">
+          <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="p-3 bg-gradient-to-br from-blue-400 to-blue-600 text-white rounded-2xl shadow-lg shadow-blue-500/30">
+              <Globe size={28} />
             </div>
+            <div>
+              <h4 className="text-xl font-black text-slate-900 dark:text-white">السيطرة على العالم</h4>
+              <p className="text-xs font-bold text-slate-500">إحصائيات الخريطة والتحديات</p>
+            </div>
+          </div>
+          
+          <div className="flex flex-col gap-3 mb-4">
+            <StatItem icon={<MapPin size={18} />} title="الدول المضافة" count={wdStats.countries} colorTheme="blue" />
+            <StatItem icon={<HelpCircle size={18} />} title="أسئلة الدول" count={wdStats.questions} colorTheme="blue" />
+            <StatItem icon={<Target size={18} />} title="أسئلة التحديات" count={wdStats.challenges} colorTheme="blue" />
+          </div>
+
+          <div className="mt-auto pt-2">
+            <button 
+              onClick={() => setShowWdDetails(!showWdDetails)}
+              className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors font-bold text-sm"
+            >
+              <span>تفصيل الأسئلة لكل دولة</span>
+              {showWdDetails ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </button>
+            
+            {showWdDetails && (
+              <div className="mt-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl p-4 max-h-[160px] overflow-y-auto custom-scroll">
+                {wdStats.countryDetails.length === 0 ? (
+                  <p className="text-center text-xs font-bold text-slate-400">لا توجد دول مضافة بعد.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {wdStats.countryDetails.map((c: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 truncate pl-2">{c.name}</span>
+                        <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-[10px] font-black px-2 py-0.5 rounded-md shrink-0">
+                          {c.qCount}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
         {/* حرب القلاع */}
-        <div className="bg-slate-50 dark:bg-slate-800/80 border-2 border-rose-200 dark:border-rose-900/50 rounded-[2rem] p-6 shadow-sm flex flex-col">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2.5 bg-rose-100 dark:bg-rose-500/20 text-rose-600 rounded-xl"><Swords size={24} /></div>
-            <h4 className="text-xl font-black text-slate-800 dark:text-slate-100">حرب القلاع</h4>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 shadow-sm flex flex-col transition-all hover:border-rose-300 dark:hover:border-rose-800">
+          <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="p-3 bg-gradient-to-br from-rose-400 to-rose-600 text-white rounded-2xl shadow-lg shadow-rose-500/30">
+              <Swords size={28} />
+            </div>
+            <div>
+              <h4 className="text-xl font-black text-slate-900 dark:text-white">حرب القلاع</h4>
+              <p className="text-xs font-bold text-slate-500">تفاصيل بنوك الأسئلة الأربعة</p>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <StatBox icon={<Clock size={18} />} title="30 ثانية" count={cwStats.q30} colorTheme="rose" />
-            <StatBox icon={<Timer size={18} />} title="5 ثواني" count={cwStats.q5} colorTheme="rose" />
-            <StatBox icon={<Target size={18} />} title="تحدي فريق" count={cwStats.team} colorTheme="rose" />
-            <StatBox icon={<HelpCircle size={18} />} title="أسئلة عامة" count={cwStats.general} colorTheme="rose" />
+          
+          <div className="flex flex-col gap-3">
+            <StatItem icon={<Clock size={18} />} title="أسئلة 30 ثانية" count={cwStats.q30} colorTheme="rose" />
+            <StatItem icon={<Timer size={18} />} title="أسئلة 5 ثواني" count={cwStats.q5} colorTheme="rose" />
+            <StatItem icon={<Target size={18} />} title="تحدي فريق لفريق" count={cwStats.team} colorTheme="rose" />
+            <StatItem icon={<HelpCircle size={18} />} title="أسئلة عامة (بدون وقت)" count={cwStats.general} colorTheme="rose" />
           </div>
         </div>
 
         {/* حرب المزايدات */}
-        <div className="bg-slate-50 dark:bg-slate-800/80 border-2 border-amber-200 dark:border-amber-900/50 rounded-[2rem] p-6 shadow-sm flex flex-col">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2.5 bg-amber-100 dark:bg-amber-500/20 text-amber-600 rounded-xl"><Gavel size={24} /></div>
-            <h4 className="text-xl font-black text-slate-800 dark:text-slate-100">حرب المزايدات</h4>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 shadow-sm flex flex-col transition-all hover:border-amber-300 dark:hover:border-amber-800">
+          <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="p-3 bg-gradient-to-br from-amber-400 to-amber-600 text-white rounded-2xl shadow-lg shadow-amber-500/30">
+              <Gavel size={28} />
+            </div>
+            <div>
+              <h4 className="text-xl font-black text-slate-900 dark:text-white">حرب المزايدات</h4>
+              <p className="text-xs font-bold text-slate-500">إحصائية المزاد والأسئلة</p>
+            </div>
           </div>
-          <div className="grid grid-cols-1 gap-3">
-            <StatBox icon={<HelpCircle size={18} />} title="إجمالي الأسئلة" count={awStats.questions} colorTheme="amber" />
+          
+          <div className="flex flex-col gap-3">
+            <StatItem icon={<HelpCircle size={18} />} title="إجمالي أسئلة المزايدة" count={awStats.questions} colorTheme="amber" />
+          </div>
+          
+          <div className="mt-auto pt-6 flex items-center justify-center">
+             <div className="w-32 h-32 opacity-10 dark:opacity-20 pointer-events-none">
+               <Gavel className="w-full h-full text-amber-500" />
+             </div>
           </div>
         </div>
+
       </div>
     </div>
   );

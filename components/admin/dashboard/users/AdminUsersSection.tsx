@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { Users, Trash2, Edit, Save, X, Loader2, Key } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { Users, Trash2, Edit, Save, X, Loader2, Key, Search } from "lucide-react";
 import { getAdminUsers, deleteAdminUser, updateAdminUser } from "@/app/actions/admin-users";
 
 type AdminUser = {
@@ -16,6 +16,7 @@ export default function AdminUsersSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Edit Form State
   const [editName, setEditName] = useState("");
@@ -96,6 +97,17 @@ export default function AdminUsersSection() {
     }
   };
 
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users;
+    
+    const query = searchQuery.toLowerCase();
+    return users.filter(user => 
+      (user.name && user.name.toLowerCase().includes(query)) ||
+      (user.email && user.email.toLowerCase().includes(query)) ||
+      (user.phone && user.phone.includes(query))
+    );
+  }, [users, searchQuery]);
+
   if (loading) {
     return (
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-6 shadow-sm flex items-center justify-center min-h-[300px]">
@@ -106,13 +118,26 @@ export default function AdminUsersSection() {
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-6 shadow-sm overflow-hidden flex flex-col">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 rounded-lg">
-          <Users size={24} />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 rounded-lg">
+            <Users size={24} />
+          </div>
+          <h2 className="text-xl font-black text-slate-900 dark:text-white">إدارة المستخدمين المسجلين</h2>
+          <div className="bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full text-sm font-bold text-slate-600 dark:text-slate-300">
+            العدد: {filteredUsers.length} {searchQuery && `من أصل ${users.length}`}
+          </div>
         </div>
-        <h2 className="text-xl font-black text-slate-900 dark:text-white">إدارة المستخدمين المسجلين</h2>
-        <div className="mr-auto bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full text-sm font-bold text-slate-600 dark:text-slate-300">
-          العدد: {users.length}
+
+        <div className="relative w-full md:w-72">
+          <input 
+            type="text" 
+            placeholder="البحث بالإسم، الإيميل، أو رقم الجوال..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-indigo-500 transition-colors text-sm font-bold"
+          />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         </div>
       </div>
 
@@ -134,7 +159,7 @@ export default function AdminUsersSection() {
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
+            {filteredUsers.map((user) => (
               <tr key={user.id} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                 
                 {editingUserId === user.id ? (
@@ -189,9 +214,11 @@ export default function AdminUsersSection() {
               </tr>
             ))}
             
-            {users.length === 0 && (
+            {filteredUsers.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-12 text-center text-slate-500 font-bold">لا يوجد مستخدمين مسجلين بعد.</td>
+                <td colSpan={5} className="py-12 text-center text-slate-500 font-bold">
+                  {searchQuery ? "لا توجد نتائج مطابقة للبحث." : "لا يوجد مستخدمين مسجلين بعد."}
+                </td>
               </tr>
             )}
           </tbody>

@@ -2,7 +2,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, Swords, Gavel, Inbox } from "lucide-react";
+import { Globe, Swords, Gavel, Inbox, Users } from "lucide-react";
 
 export default function AdminSidebar() {
   const pathname = usePathname();
@@ -12,6 +12,7 @@ export default function AdminSidebar() {
     { href: "/admin/castle-war", label: "حرب القلاع", icon: Swords, color: "text-rose-600", bg: "bg-rose-50 dark:bg-rose-900/20" },
     { href: "/admin/auction", label: "حرب المزايدات", icon: Gavel, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-900/20" },
     { href: "/admin/messages", label: "صندوق الوارد", icon: Inbox, color: "text-indigo-600", bg: "bg-indigo-50 dark:bg-indigo-900/20" },
+    { href: "/admin/users", label: "المستخدمين", icon: Users, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
   ];
 
   return (

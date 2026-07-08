@@ -3,19 +3,19 @@
 
 import React, { useEffect, useState } from "react";
 import { Cairo } from "next/font/google";
-import { Database, LogOut, Loader2, Sun, Moon } from "lucide-react";
+import { LogOut, Loader2, Sun, Moon, ArrowRight } from "lucide-react";
 import { useTheme } from "next-themes";
+import Link from "next/link";
 
 import AdminSidebar from "@/components/admin/layout/AdminSidebar";
 import ServerStatusButton from "@/components/admin/dashboard/ServerStatusButton";
 import { useAdminDashboard } from "@/hooks/useAdminDashboard";
 import ParticleBackground from "@/components/admin/dashboard/ParticleBackground";
-import AdminStatsSection from "@/components/admin/dashboard/AdminStatsSection";
-import AdminBackupSection from "@/components/admin/dashboard/AdminBackupSection";
+import AdminUsersSection from "@/components/admin/dashboard/users/AdminUsersSection";
 
 const cairo = Cairo({ subsets: ["arabic"], weight: ["400", "700", "900"] });
 
-export default function AdminDashboardMain() {
+export default function AdminUsersPage() {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
 
@@ -23,10 +23,7 @@ export default function AdminDashboardMain() {
     setMounted(true);
   }, []);
 
-  const {
-    isAuthChecking, wdStats, cwStats, awStats,
-    handleLogout, handleExportBackup, handleImportBackup, handleMigrateFromOldTables
-  } = useAdminDashboard();
+  const { isAuthChecking, handleLogout } = useAdminDashboard();
 
   if (isAuthChecking) {
     return (
@@ -49,12 +46,20 @@ export default function AdminDashboardMain() {
               <img src="/logo.svg" alt="الشعار" className="w-10 h-10 object-contain" />
             </div>
             <div className="text-center md:text-right">
-              <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white">لوحة التحكم المركزية</h1>
-              <p className="text-xs md:text-sm font-bold text-slate-500">إدارة بنوك المعلومات لجميع الألعاب</p>
+              <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white">إدارة المستخدمين</h1>
+              <p className="text-xs md:text-sm font-bold text-slate-500">التحكم الكامل بحسابات المسجلين</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 md:gap-3 flex-wrap justify-center w-full md:w-auto">
+            <Link 
+              href="/admin" 
+              className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition-colors font-bold text-sm"
+            >
+              <ArrowRight size={16} />
+              العودة للرئيسية
+            </Link>
+
             {mounted && (
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -81,16 +86,7 @@ export default function AdminDashboardMain() {
           <AdminSidebar />
           
           <section className="flex-1 flex flex-col gap-6">
-            <AdminStatsSection wdStats={wdStats} cwStats={cwStats} awStats={awStats} />
-            
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-6 shadow-sm">
-              <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6">النسخ الاحتياطي وإدارة البيانات</h2>
-              <AdminBackupSection 
-                handleExportBackup={handleExportBackup} 
-                handleImportBackup={handleImportBackup} 
-                handleMigrateFromOldTables={handleMigrateFromOldTables}
-              />
-            </div>
+            <AdminUsersSection />
           </section>
         </div>
       </div>

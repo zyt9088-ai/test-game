@@ -15,7 +15,7 @@ function getAdminClient(cookieStore: any) {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             );
-          } catch (error) {}
+          } catch (error) { }
         },
       },
     }
@@ -50,7 +50,7 @@ export async function deleteAdminUser(userId: string) {
   if (error) {
     return { success: false, error: error.message };
   }
-  
+
   // Try deleting from profiles table just in case it exists and cascade didn't work
   await supabase.from("profiles").delete().eq("id", userId);
 
@@ -64,7 +64,19 @@ export async function updateAdminUser(userId: string, updates: { name?: string; 
 
   const authUpdates: any = {};
   if (updates.email) authUpdates.email = updates.email;
-  if (updates.phone) authUpdates.phone = updates.phone;
+  
+  if (updates.phone) {
+    let phoneStr = updates.phone.trim();
+    if (phoneStr.startsWith("05") && phoneStr.length === 10) {
+      phoneStr = "+966" + phoneStr.substring(1);
+    } else if (phoneStr.startsWith("5") && phoneStr.length === 9) {
+      phoneStr = "+966" + phoneStr;
+    } else if (!phoneStr.startsWith("+")) {
+      phoneStr = "+" + phoneStr.replace(/\D/g, "");
+    }
+    authUpdates.phone = phoneStr;
+  }
+  
   if (updates.password && updates.password.length > 0) authUpdates.password = updates.password;
 
   const userMetadataUpdates: any = {};
