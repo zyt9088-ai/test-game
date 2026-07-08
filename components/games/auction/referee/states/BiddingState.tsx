@@ -20,6 +20,16 @@ export default function BiddingState({ ctx }: { ctx: any }) {
       </div>
       <h3 className="text-xs md:text-sm font-black text-slate-500 dark:text-slate-400 mb-1 md:mb-2">فئة السؤال والمجال</h3>
       <h2 className="text-4xl md:text-7xl font-black mb-6 md:mb-10 tracking-wide text-slate-800 dark:text-white drop-shadow-sm">{questions[currentIndex].category}</h2>
+      
+      <div className="flex justify-center mb-6">
+        <button 
+          onClick={ctx.handleChangeQuestion} 
+          className="text-sm font-bold bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 py-2 px-6 rounded-full transition-colors border border-slate-300 dark:border-slate-600 shadow-sm"
+        >
+          تغيير الفئة / السؤال 🎲
+        </button>
+      </div>
+
       <div className="bg-slate-50 dark:bg-slate-950 p-5 md:p-8 rounded-3xl mb-6 md:mb-8 border-2 border-slate-200 dark:border-slate-800 text-right shadow-inner">
          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
             <div>

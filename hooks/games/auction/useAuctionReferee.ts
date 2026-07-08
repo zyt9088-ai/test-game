@@ -33,6 +33,7 @@ export function useAuctionReferee() {
   const [t2Ambush, setT2Ambush] = useState(3);
   
   const [questions, setQuestions] = useState<any[]>([]);
+  const [allQuestions, setAllQuestions] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [turn, setTurn] = useState<1 | 2>(1);
 
@@ -59,7 +60,39 @@ export function useAuctionReferee() {
   useEffect(() => {
     setMounted(true);
     const initRoom = async () => {
+      let savedCode = sessionStorage.getItem("auction_referee_room_code");
+      if (savedCode) {
+        const { data } = await supabase.from("auction_rooms").select("*").eq("room_code", savedCode).single();
+        if (data && data.game_state !== "gameOver") {
+          setRoomCode(savedCode);
+          setGameState(data.game_state);
+          setT1Name(data.t1_name);
+          setT2Name(data.t2_name);
+          setT1Balance(data.t1_balance);
+          setT2Balance(data.t2_balance);
+          setT1Points(data.t1_points);
+          setT2Points(data.t2_points);
+          setT1Ambush(data.t1_ambush);
+          setT2Ambush(data.t2_ambush);
+          setQuestions(data.questions || []);
+          setCurrentIndex(data.current_index || 0);
+          setTurn(data.turn || 1);
+          setWinner(data.winner);
+          setBuyer(data.buyer);
+          setIsDoubleRisk(data.is_double_risk || false);
+          setPlayMode(data.play_mode);
+          setTimer(data.timer || 25);
+          setIsTimerRunning(data.is_timer_running || false);
+          setIsQuestionVisible(data.is_question_visible || false);
+          if (data.t1_bid !== null && data.t1_bid !== undefined) setT1Bid(data.t1_bid);
+          if (data.t2_bid !== null && data.t2_bid !== undefined) setT2Bid(data.t2_bid);
+          setSelectedOption(data.selected_option);
+          return;
+        }
+      }
+      
       const newCode = "A" + Math.random().toString(36).substring(2, 6).toUpperCase();
+      sessionStorage.setItem("auction_referee_room_code", newCode);
       setRoomCode(newCode);
       await supabase.from("auction_rooms").upsert([{
         room_code: newCode,
@@ -121,7 +154,7 @@ export function useAuctionReferee() {
       }).eq("room_code", roomCode);
     };
     syncData();
-  }, [gameState, t1Balance, t2Balance, t1Points, t2Points, currentIndex, winner, buyer, playMode, isDoubleRisk, turn, timer, isTimerRunning, isQuestionVisible, roomCode]);
+  }, [gameState, t1Balance, t2Balance, t1Points, t2Points, currentIndex, winner, buyer, playMode, isDoubleRisk, turn, timer, isTimerRunning, isQuestionVisible, roomCode, questions]);
 
   useEffect(() => {
     if (!roomCode) return;
@@ -177,6 +210,45 @@ export function useAuctionReferee() {
     }
   };
 
+  const resetGame = async () => {
+    if (!roomCode) return;
+    await supabase.from("auction_rooms").update({
+      game_state: "setup",
+      t1_balance: 50000,
+      t2_balance: 50000,
+      t1_points: 0,
+      t2_points: 0,
+      t1_ambush: 3,
+      t2_ambush: 3,
+      t1_bid: null,
+      t2_bid: null,
+      t1_device_id: null,
+      t2_device_id: null,
+      selected_option: null,
+      questions: [],
+      current_index: 0
+    }).eq("room_code", roomCode);
+    
+    setGameState("setup");
+    setT1Balance(50000);
+    setT2Balance(50000);
+    setT1Points(0);
+    setT2Points(0);
+    setT1Ambush(3);
+    setT2Ambush(3);
+    setT1Bid("");
+    setT2Bid("");
+    setQuestions([]);
+    setAllQuestions([]);
+    setCurrentIndex(0);
+    setWinner(null);
+    setBuyer(null);
+    setPlayMode(null);
+    setIsDoubleRisk(false);
+    setSelectedOption(null);
+    triggerAlert("تم تصفير اللعبة بنجاح! يمكن للفرق الدخول مجدداً بنفس الرمز.");
+  };
+
   const startGame = async () => {
     const { data: realQuestions, error } = await supabase
       .from("aw_questions")
@@ -188,8 +260,10 @@ export function useAuctionReferee() {
     }
 
     const actualQCount = Math.min(qCount, realQuestions.length);
-    const selectedQs = shuffleArray(realQuestions).slice(0, actualQCount);
+    const shuffled = shuffleArray(realQuestions);
+    const selectedQs = shuffled.slice(0, actualQCount);
     
+    setAllQuestions(shuffled);
     setQuestions(selectedQs);
     setT1Balance(50000);
     setT2Balance(50000);
@@ -355,6 +429,32 @@ export function useAuctionReferee() {
     setGameState("result");
   };
 
+  const handleChangeQuestion = async () => {
+    let pool = allQuestions;
+    if (pool.length === 0) {
+      const { data } = await supabase.from("aw_questions").select("*");
+      if (data) {
+        pool = data;
+        setAllQuestions(data);
+      }
+    }
+    
+    if (pool.length > 0) {
+      const currentQIds = questions.map(q => q.id);
+      const availableQs = pool.filter(q => !currentQIds.includes(q.id));
+      
+      if (availableQs.length > 0) {
+        const randomQ = availableQs[Math.floor(Math.random() * availableQs.length)];
+        const newQs = [...questions];
+        newQs[currentIndex] = randomQ;
+        setQuestions(newQs);
+        triggerAlert("تم تغيير فئة السؤال بنجاح!");
+      } else {
+        triggerAlert("لا يوجد أسئلة إضافية متاحة لتغيير السؤال الحالي.");
+      }
+    }
+  };
+
   const nextQuestion = async () => {
     if (currentIndex + 1 >= questions.length) {
       setGameState("gameOver");
@@ -389,6 +489,6 @@ export function useAuctionReferee() {
     timer, isTimerRunning, setIsTimerRunning, isQuestionVisible, setIsQuestionVisible, alertConfig,
     triggerAlert, closeAlert, triggerConfirm, copyLink, startGame, calculateMinBid, handleBidsSubmit, handlePreRiskDecision,
     handleBuyQuestion, handleAnswer, handleRewardChoice, nextQuestion, getWinnerName, getWinnerBid,
-    getLoserBid, getWinnerCurrentBalance, resetTeamDevice
+    getLoserBid, getWinnerCurrentBalance, resetTeamDevice, handleChangeQuestion, resetGame
   };
 }

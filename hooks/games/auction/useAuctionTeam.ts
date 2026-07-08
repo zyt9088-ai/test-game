@@ -48,8 +48,21 @@ export function useAuctionTeam() {
     if (roomCode.length === 5) {
       const fetchNames = async () => {
         const { data } = await supabase.from("auction_rooms").select("t1_name, t2_name, t1_device_id, t2_device_id").eq("room_code", roomCode).neq("t1_name", Date.now().toString()).single();
-        if (data) setRoomInfo(data);
-        else setRoomInfo(null);
+        if (data) {
+          setRoomInfo(data);
+          let dId = sessionStorage.getItem("auction_device_id");
+          if (dId) {
+            if (data.t1_device_id === dId) {
+              setTeamId(1);
+              setIsJoined(true);
+            } else if (data.t2_device_id === dId) {
+              setTeamId(2);
+              setIsJoined(true);
+            }
+          }
+        } else {
+          setRoomInfo(null);
+        }
       };
       fetchNames();
 
@@ -59,6 +72,20 @@ export function useAuctionTeam() {
              t1_name: payload.new.t1_name, t2_name: payload.new.t2_name,
              t1_device_id: payload.new.t1_device_id, t2_device_id: payload.new.t2_device_id
            });
+           
+           let dId = sessionStorage.getItem("auction_device_id");
+           if (dId) {
+             if (payload.new.t1_device_id === dId) {
+               setTeamId(1);
+               setIsJoined(true);
+             } else if (payload.new.t2_device_id === dId) {
+               setTeamId(2);
+               setIsJoined(true);
+             } else if (payload.new.t1_device_id !== dId && payload.new.t2_device_id !== dId) {
+               setIsJoined(false);
+               setTeamId(null);
+             }
+           }
         }).subscribe();
 
       return () => { supabase.removeChannel(nameChannel); };
@@ -156,12 +183,21 @@ export function useAuctionTeam() {
     if (myBid === "" || Number(myBid) <= 0) { triggerAlert("الرجاء إدخال مبلغ مزايدة صحيح."); return; }
     if (Number(myBid) % 100 !== 0) { triggerAlert("يجب أن تكون المزايدة من مضاعفات 100."); return; }
     
-    if (Number(myBid) < 1000) { 
-      triggerAlert("عفواً، أقل مبلغ مسموح للمزايدة هو 1000 💰"); 
+    const oppBalance = teamId === 1 ? liveData.t2_balance : liveData.t1_balance;
+    const myBalance = teamId === 1 ? liveData.t1_balance : liveData.t2_balance;
+    const remainingQs = liveData.questions.length - liveData.current_index;
+    
+    let minBid = 1000;
+    if (oppBalance <= 0 && remainingQs > 0) {
+      const calculated = Math.floor(myBalance / remainingQs);
+      minBid = Math.max(100, Math.floor(calculated / 100) * 100);
+    }
+    
+    if (Number(myBid) < minBid) { 
+      triggerAlert(`عفواً، أقل مبلغ مسموح للمزايدة هو ${minBid} 💰`); 
       return; 
     }
     
-    const myBalance = teamId === 1 ? liveData.t1_balance : liveData.t2_balance;
     if (Number(myBid) > myBalance) { triggerAlert("لا يمكنك المزايدة بأكثر من رصيدك الحالي."); return; }
     
     const colName = teamId === 1 ? "t1_bid" : "t2_bid";

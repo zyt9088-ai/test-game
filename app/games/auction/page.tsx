@@ -35,7 +35,7 @@ export default function AuctionRefereeScreen() {
       <RefereeAlertModal alertConfig={ctx.alertConfig} closeAlert={ctx.closeAlert} />
 
       <div className="w-full max-w-5xl mx-auto flex flex-col gap-3 md:gap-4 mb-4 md:mb-6 shrink-0 mt-14 md:mt-0">
-        <RefereeHeader roomCode={ctx.roomCode} setShowQRModal={ctx.setShowQRModal} copyLink={ctx.copyLink} />
+        <RefereeHeader roomCode={ctx.roomCode} setShowQRModal={ctx.setShowQRModal} copyLink={ctx.copyLink} resetGame={ctx.resetGame} triggerConfirm={ctx.triggerConfirm} />
         <RefereeScoreboard 
           gameState={ctx.gameState} currentIndex={ctx.currentIndex} questions={ctx.questions} 
           t1Name={ctx.t1Name} t2Name={ctx.t2Name} t1Balance={ctx.t1Balance} t2Balance={ctx.t2Balance} 
