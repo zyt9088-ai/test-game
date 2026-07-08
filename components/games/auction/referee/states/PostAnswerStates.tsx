@@ -28,23 +28,41 @@ export default function PostAnswerStates({ ctx }: { ctx: any }) {
               </button>
               {(() => {
                 const ambushesLeft = winner === 1 ? t1Ambush : t2Ambush;
-                return ambushesLeft > 0 ? (
+                const loserBid = ctx.getLoserBid();
+                
+                if (ambushesLeft <= 0) {
+                  return (
+                    <div className="p-6 md:p-8 bg-slate-100 dark:bg-slate-800 border-b-4 border-slate-300 dark:border-slate-700 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center gap-3 shadow-md opacity-70 cursor-not-allowed">
+                       <ShieldAlert className="w-10 h-10 md:w-14 md:h-14 text-slate-400" />
+                       <span className="font-black text-xl md:text-2xl text-slate-500">كمين (نفدت البطاقات)</span>
+                       <span className="text-[10px] md:text-xs font-bold leading-relaxed bg-slate-200 dark:bg-slate-700 p-2 rounded-xl text-slate-500">
+                         لا يمكنك استخدام هذا الخيار<br/>لأنك استنفدت المحاولات الـ 3
+                       </span>
+                    </div>
+                  );
+                }
+                
+                if (loserBid > 5000) {
+                  return (
+                    <div className="p-6 md:p-8 bg-slate-100 dark:bg-slate-800 border-b-4 border-slate-300 dark:border-slate-700 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center gap-3 shadow-md opacity-70 cursor-not-allowed">
+                       <ShieldAlert className="w-10 h-10 md:w-14 md:h-14 text-slate-400" />
+                       <span className="font-black text-xl md:text-2xl text-slate-500">الكمين معطل</span>
+                       <span className="text-[10px] md:text-xs font-bold leading-relaxed bg-slate-200 dark:bg-slate-700 p-2 rounded-xl text-rose-500 font-black">
+                         لا يمكنك استخدامه لأن<br/>مزايدة الخصم أعلى من 5000 ({loserBid} 💰)
+                       </span>
+                    </div>
+                  );
+                }
+                
+                return (
                   <button onClick={() => handleRewardChoice("ambush")} className="p-6 md:p-8 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-800/40 border-b-4 border-amber-400 dark:border-amber-700 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center gap-3 transition-all active:border-b-0 active:translate-y-[4px] group shadow-md">
                      <ShieldAlert className="w-10 h-10 md:w-14 md:h-14 text-amber-500 group-hover:scale-110 transition-transform" />
                      <span className="font-black text-xl md:text-2xl text-amber-700 dark:text-amber-400">كمين (باقي {ambushesLeft})</span>
                      <span className="text-[10px] md:text-xs font-bold leading-relaxed bg-amber-100 dark:bg-amber-950 p-2 rounded-xl text-amber-800 dark:text-amber-300">
                        استرداد اللي دفعته ({isDoubleRisk ? getWinnerBid() * 2 : getWinnerBid()} 💰)<br/>
-                       وخصم مزايدة الخصم كاملة (إذا كانت 5,000 أو أقل)
+                       وخصم مزايدة الخصم كاملة ({loserBid} 💰)
                      </span>
                   </button>
-                ) : (
-                  <div className="p-6 md:p-8 bg-slate-100 dark:bg-slate-800 border-b-4 border-slate-300 dark:border-slate-700 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center gap-3 shadow-md opacity-70 cursor-not-allowed">
-                     <ShieldAlert className="w-10 h-10 md:w-14 md:h-14 text-slate-400" />
-                     <span className="font-black text-xl md:text-2xl text-slate-500">كمين (نفدت البطاقات)</span>
-                     <span className="text-[10px] md:text-xs font-bold leading-relaxed bg-slate-200 dark:bg-slate-700 p-2 rounded-xl text-slate-500">
-                       لا يمكنك استخدام هذا الخيار<br/>لأنك استنفدت المحاولات الـ 3
-                     </span>
-                  </div>
                 );
               })()}
            </div>
