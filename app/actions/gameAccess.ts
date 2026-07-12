@@ -163,3 +163,75 @@ export async function fetchUserProfileAction(clientUserId: string) {
     return null;
   }
 }
+
+export async function checkAccessAction(gameId: string) {
+  try {
+    const supabaseServer = await getSupabaseServer();
+    const { data: { user } } = await supabaseServer.auth.getUser();
+    if (!user) {
+      return { allowed: false, reason: "error" as const, availableTokens: 0 };
+    }
+
+    const userId = user.id;
+    const serviceKey = getServiceRoleKey();
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!serviceKey || !url) {
+      return { allowed: false, reason: "error" as const, availableTokens: 0 };
+    }
+
+    const supabaseAdmin = createClient(url, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    // 1. Get user profile for tokens
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("available_tokens")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const tokens = profile?.available_tokens || 0;
+
+    // 2. Get user game record to check if THIS game is purchased
+    const { data: userGame } = await supabaseAdmin
+      .from("user_games")
+      .select("is_purchased")
+      .eq("user_id", userId)
+      .eq("game_id", gameId)
+      .maybeSingle();
+
+    const isPurchased = userGame?.is_purchased || false;
+
+    // Rule 1: Lifetime purchased
+    if (isPurchased) {
+      return { allowed: true, reason: "paid" as const, availableTokens: tokens };
+    }
+
+    // 3. Get TOTAL games played across ALL games to check global free trial
+    const { data: allGames } = await supabaseAdmin
+      .from("user_games")
+      .select("games_played")
+      .eq("user_id", userId);
+
+    let totalGamesPlayed = 0;
+    if (allGames) {
+      totalGamesPlayed = allGames.reduce((acc: number, g: any) => acc + (g.games_played || 0), 0);
+    }
+
+    // Rule 2: Global Free Trial (only if they never played ANY game)
+    if (totalGamesPlayed === 0) {
+      return { allowed: true, reason: "free_trial" as const, availableTokens: tokens };
+    }
+
+    // Rule 3: Has Tokens
+    if (tokens > 0) {
+      return { allowed: true, reason: "paid" as const, availableTokens: tokens };
+    }
+
+    // Blocked
+    return { allowed: false, reason: "no_tokens" as const, availableTokens: tokens };
+  } catch (err) {
+    console.error("checkAccessAction Error:", err);
+    return { allowed: false, reason: "error" as const, availableTokens: 0 };
+  }
+}
