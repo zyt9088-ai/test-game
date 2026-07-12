@@ -83,6 +83,8 @@ export function useWorldDomination() {
   const showAlert = (msg: string) => rawShowAlert("تنبيه", msg, "info");
   const showConfirm = (msg: string, onConfirm: () => void) => rawShowConfirm("تأكيد", msg, onConfirm);
 
+  const [isAccessChecking, setIsAccessChecking] = useState(true);
+
   // دالة استرجاع اللعبة فوراً عند فتح أو تحديث الصفحة
   useEffect(() => {
     const getSession = async () => {
@@ -93,6 +95,8 @@ export function useWorldDomination() {
         const access = await checkAccess("world-domination", user.id);
         if (!access.allowed) {
           router.push("/packages");
+        } else {
+          setIsAccessChecking(false);
         }
       } else {
         router.push("/player");
@@ -280,5 +284,6 @@ export function useWorldDomination() {
     ...mapActions,
     ...combatActions,
     ...cardsActions,
+    isAccessChecking,
   };
 }

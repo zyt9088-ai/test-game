@@ -3,6 +3,7 @@
 import React from "react";
 import { Cairo } from "next/font/google";
 import LoadingScreen from "@/components/games/world-domination/LoadingScreen";
+import AccessLoadingScreen from "@/components/games/shared/AccessLoadingScreen";
 import { useWorldDomination } from "@/hooks/useWorldDomination";
 import QuestionModal from "@/components/games/world-domination/QuestionModal";
 import LobbyScreen from "@/components/games/world-domination/LobbyScreen";
@@ -39,8 +40,12 @@ export default function WorldDominationGame() {
     handleChangeQuestion, handleRefereeChangeQuestion, adjustScore, handleManualFree,
     handleSpyAction, handleConfirmAnswers, handleCapture, handleMiss,
     countriesLeft, team1Owned, team2Owned,
-    useCaptureCard, useAirStrike, useProtectCard
+    useCaptureCard, useAirStrike, useProtectCard, isAccessChecking
   } = useWorldDomination();
+
+  if (isAccessChecking) {
+    return <AccessLoadingScreen />;
+  }
 
   if (isLoading) {
     return <LoadingScreen />;

@@ -63,6 +63,8 @@ export function useAuctionReferee() {
   const triggerConfirm = (msg: string, onConfirm: () => void) => setAlertConfig({ show: true, message: msg, isConfirm: true, onConfirm });
   const closeAlert = () => setAlertConfig({ show: false, message: "" });
 
+  const [isAccessChecking, setIsAccessChecking] = useState(true);
+
   useEffect(() => {
     setMounted(true);
     
@@ -74,6 +76,8 @@ export function useAuctionReferee() {
         const access = await checkAccess("auction", user.id);
         if (!access.allowed) {
           router.push("/packages");
+        } else {
+          setIsAccessChecking(false);
         }
       } else {
         router.push("/player");
@@ -537,6 +541,6 @@ export function useAuctionReferee() {
     timer, isTimerRunning, setIsTimerRunning, isQuestionVisible, setIsQuestionVisible, alertConfig,
     triggerAlert, closeAlert, triggerConfirm, copyLink, startGame, calculateMinBid, handleBidsSubmit, handlePreRiskDecision,
     handleBuyQuestion, handleAnswer, handleRewardChoice, nextQuestion, getWinnerName, getWinnerBid,
-    getLoserBid, getWinnerCurrentBalance, resetTeamDevice, handleChangeQuestion, resetGame
+    getLoserBid, getWinnerCurrentBalance, resetTeamDevice, handleChangeQuestion, resetGame, isAccessChecking
   };
 }

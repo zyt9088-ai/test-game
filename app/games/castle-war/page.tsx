@@ -14,6 +14,8 @@ import SolidGamingBackground from "@/components/games/castle-war/SolidGamingBack
 import InteractiveCastle from "@/components/games/castle-war/InteractiveCastle";
 import { useCastleWar, TOTAL_SOLDIERS } from "@/hooks/useCastleWar";
 
+import AccessLoadingScreen from "@/components/games/shared/AccessLoadingScreen";
+
 const cairo = Cairo({ subsets: ["arabic"], weight: ["400", "700", "900"] });
 
 export default function CastleBattleMainScreen() {
@@ -29,10 +31,14 @@ export default function CastleBattleMainScreen() {
     screenShake, explosionRoomIndexHit, soundEnabled, setSoundEnabled, isDarkMode,
     usedChallengesT1, usedChallengesT2, targetRoomIndex, isAttacking,
     formatTime, getChallengeTitle, handleSelectChallenge, cancelChallenge, pickNewChallenge,
-    challengeSuccess, challengeFail, useSpy, executeAttack, resolveTrap, nextTurn
+    challengeSuccess, challengeFail, useSpy, executeAttack, resolveTrap, nextTurn, isAccessChecking
   } = useCastleWar();
 
   const cardClass = "bg-white dark:bg-slate-800 border-4 border-slate-900 dark:border-black rounded-3xl shadow-[6px_6px_0px_#0f172a] dark:shadow-[6px_6px_0px_#000] transition-colors duration-300";
+
+  if (isAccessChecking) {
+    return <AccessLoadingScreen />;
+  }
 
   if (isLoading) {
     return (

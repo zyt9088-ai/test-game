@@ -176,6 +176,8 @@ export function useCastleWar() {
     }
   }, [gameState, router]);
 
+  const [isAccessChecking, setIsAccessChecking] = useState(true);
+
   useEffect(() => {
     const checkTheme = () => setIsDarkMode(document.documentElement.classList.contains("dark"));
     checkTheme();
@@ -190,6 +192,8 @@ export function useCastleWar() {
         const access = await checkAccess("castle-war", user.id);
         if (!access.allowed) {
           router.push("/packages");
+        } else {
+          setIsAccessChecking(false);
         }
       } else {
         router.push("/player");
@@ -708,6 +712,6 @@ export function useCastleWar() {
     screenShake, explosionRoomIndexHit, soundEnabled, setSoundEnabled, isDarkMode,
     usedChallengesT1, usedChallengesT2, targetRoomIndex, isAttacking,
     formatTime, getChallengeTitle, handleSelectChallenge, cancelChallenge, pickNewChallenge,
-    challengeSuccess, challengeFail, useSpy, executeAttack, resolveTrap, nextTurn
+    challengeSuccess, challengeFail, useSpy, executeAttack, resolveTrap, nextTurn, isAccessChecking
   };
 }

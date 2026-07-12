@@ -16,6 +16,7 @@ import BiddingState from "@/components/games/auction/referee/states/BiddingState
 import RiskAndDecisionStates from "@/components/games/auction/referee/states/RiskAndDecisionStates";
 import QuestionAndOptionsStates from "@/components/games/auction/referee/states/QuestionAndOptionsStates";
 import PostAnswerStates from "@/components/games/auction/referee/states/PostAnswerStates";
+import AccessLoadingScreen from "@/components/games/shared/AccessLoadingScreen";
 
 const cairo = Cairo({ subsets: ["arabic"], weight: ["400", "700", "900"] });
 
@@ -23,6 +24,10 @@ export default function AuctionRefereeScreen() {
   const ctx = useAuctionReferee();
 
   if (!ctx.mounted) return null;
+
+  if (ctx.isAccessChecking) {
+    return <AccessLoadingScreen />;
+  }
 
   return (
     <main className={`min-h-[100dvh] overflow-x-hidden overflow-y-auto bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white p-3 md:p-6 flex flex-col relative z-10 transition-colors duration-500 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${cairo.className}`} dir="rtl">
