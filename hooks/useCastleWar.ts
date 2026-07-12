@@ -184,7 +184,16 @@ export function useCastleWar() {
 
     const getSession = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) setUserId(user.id);
+      if (user) {
+        setUserId(user.id);
+        // التحقق من الرصيد فوراً عند دخول صفحة اللعبة
+        const access = await checkAccess("castle-war", user.id);
+        if (!access.allowed) {
+          router.push("/packages");
+        }
+      } else {
+        router.push("/player");
+      }
     };
     getSession();
 
