@@ -169,6 +169,8 @@ export function useCastleWar() {
 
   useEffect(() => {
     if (gameState === "gameOver") {
+      // إزالة علامة اللعبة النشطة عند انتهاء اللعبة
+      sessionStorage.removeItem("cw_active_session");
       const timer = setTimeout(() => {
         router.push("/my-games");
       }, 5000);
@@ -188,6 +190,15 @@ export function useCastleWar() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
+
+        // التحقق من وجود لعبة نشطة (تم الدفع مسبقاً)
+        const activeSession = sessionStorage.getItem("cw_active_session");
+        if (activeSession) {
+          // لعبة نشطة - تجاوز فحص الرصيد
+          setIsAccessChecking(false);
+          return;
+        }
+
         // التحقق من الرصيد فوراً عند دخول صفحة اللعبة
         const access = await checkAccess("castle-war", user.id);
         if (!access.allowed) {
@@ -378,6 +389,9 @@ export function useCastleWar() {
 
       // Consume the token or free trial
       await consumeGameSession("castle-war", userId, access.reason);
+
+      // حفظ علامة لعبة نشطة لتجاوز فحص الرصيد عند التحديث
+      sessionStorage.setItem("cw_active_session", "true");
       
       setGameState("playing");
     }

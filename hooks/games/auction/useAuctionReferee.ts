@@ -72,6 +72,15 @@ export function useAuctionReferee() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
+
+        // التحقق من وجود لعبة نشطة (تم الدفع مسبقاً)
+        const activeSession = sessionStorage.getItem("auction_active_session");
+        if (activeSession) {
+          // لعبة نشطة - تجاوز فحص الرصيد
+          setIsAccessChecking(false);
+          return;
+        }
+
         // التحقق من الرصيد فوراً عند دخول صفحة اللعبة
         const access = await checkAccess("auction", user.id);
         if (!access.allowed) {
@@ -281,6 +290,8 @@ export function useAuctionReferee() {
     setPlayMode(null);
     setIsDoubleRisk(false);
     setSelectedOption(null);
+    // إزالة علامة اللعبة النشطة عند إعادة تصفير اللعبة
+    sessionStorage.removeItem("auction_active_session");
     triggerAlert("تم تصفير اللعبة بنجاح! يمكن للفرق الدخول مجدداً بنفس الرمز.");
   };
 
@@ -333,6 +344,9 @@ export function useAuctionReferee() {
 
     // Consume the token or free trial
     await consumeGameSession("auction", userId, access.reason);
+
+    // حفظ علامة لعبة نشطة لتجاوز فحص الرصيد عند التحديث
+    sessionStorage.setItem("auction_active_session", "true");
 
     setSelectedOption(null);
     setGameState("bidding");
@@ -509,6 +523,8 @@ export function useAuctionReferee() {
 
   const nextQuestion = async () => {
     if (currentIndex + 1 >= questions.length || (t1Balance <= 0 && t2Balance <= 0)) {
+      // إزالة علامة اللعبة النشطة عند انتهاء اللعبة
+      sessionStorage.removeItem("auction_active_session");
       setGameState("gameOver");
     } else {
       setCurrentIndex(p => p + 1);

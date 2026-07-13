@@ -75,6 +75,9 @@ export function useWDSetupActions(ctx: any) {
     
     // Consume Token or Free Trial
     await ctx.consumeGameSession("world-domination", ctx.userId, access.reason);
+
+    // حفظ علامة لعبة نشطة لتجاوز فحص الرصيد عند التحديث
+    sessionStorage.setItem("wd_active_session", "true");
     
     ctx.setGameState("setupMap");
   };

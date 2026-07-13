@@ -30,6 +30,8 @@ export function useWorldDomination() {
 
   useEffect(() => {
     if (flow.gameState === "gameOver") {
+      // إزالة علامة اللعبة النشطة عند انتهاء اللعبة
+      sessionStorage.removeItem("wd_active_session");
       const timer = setTimeout(() => {
         router.push("/my-games");
       }, 5000);
@@ -91,6 +93,15 @@ export function useWorldDomination() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
+
+        // التحقق من وجود لعبة نشطة (تم الدفع مسبقاً)
+        const activeSession = sessionStorage.getItem("wd_active_session");
+        if (activeSession) {
+          // لعبة نشطة - تجاوز فحص الرصيد
+          setIsAccessChecking(false);
+          return;
+        }
+
         // التحقق من الرصيد فوراً عند دخول صفحة اللعبة
         const access = await checkAccess("world-domination", user.id);
         if (!access.allowed) {

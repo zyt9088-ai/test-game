@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Tajawal } from "next/font/google";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
-import { checkPhoneUnique } from "@/app/actions/auth";
 import { 
   Home, 
   MessageCircle, 
@@ -16,8 +15,8 @@ import {
   Gavel, 
   ChevronDown,
   User,
-  Search,
-  Zap
+  Zap,
+  ShieldCheck
 } from "lucide-react";
 
 const tajawal = Tajawal({
@@ -27,29 +26,7 @@ const tajawal = Tajawal({
 
 const supabase = getSupabaseBrowser();
 
-// ----------------------------------------------------
-// قائمة الدول العربية ومفاتيحها والأعلام
-// ----------------------------------------------------
-const arabCountries = [
-  { name: "السعودية", code: "+966", flag: "🇸🇦" },
-  { name: "الإمارات", code: "+971", flag: "🇦🇪" },
-  { name: "الكويت", code: "+965", flag: "🇰🇼" },
-  { name: "قطر", code: "+974", flag: "🇶🇦" },
-  { name: "البحرين", code: "+973", flag: "🇧🇭" },
-  { name: "عمان", code: "+968", flag: "🇴🇲" },
-  { name: "مصر", code: "+20", flag: "🇪🇬" },
-  { name: "الأردن", code: "+962", flag: "🇯🇴" },
-  { name: "فلسطين", code: "+970", flag: "🇵🇸" },
-  { name: "لبنان", code: "+961", flag: "🇱🇧" },
-  { name: "سوريا", code: "+963", flag: "🇸🇾" },
-  { name: "العراق", code: "+964", flag: "🇮🇶" },
-  { name: "اليمن", code: "+967", flag: "🇾🇪" },
-  { name: "السودان", code: "+249", flag: "🇸🇩" },
-  { name: "المغرب", code: "+212", flag: "🇲🇦" },
-  { name: "الجزائر", code: "+213", flag: "🇩🇿" },
-  { name: "تونس", code: "+216", flag: "🇹🇳" },
-  { name: "ليبيا", code: "+218", flag: "🇱🇾" },
-];
+
 
 // ----------------------------------------------------
 // محرك خلفية الألعاب
@@ -111,17 +88,17 @@ export default function PlayerLoginPage() {
   
   // حالات الإدخال الخاصة بإنشاء الحساب
   const [fullName, setFullName] = useState("");
-  const [countryCode, setCountryCode] = useState("+966");
-  const [phone, setPhone] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
-
-  // حالات خاصة بالقائمة المنسدلة العصرية
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
 
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
   const [notification, setNotification] = useState({ isOpen: false, message: "", type: "success" });
+
+  // حالات التحقق بـ OTP
+  const [showOtpScreen, setShowOtpScreen] = useState(false);
+  const [otpCode, setOtpCode] = useState(["" , "", "", "", "", ""]);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const otpInputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains("dark"));
@@ -201,7 +178,7 @@ export default function PlayerLoginPage() {
         setAuthLoading(false);
       }
     } else {
-      if (!fullName || !authEmail || !phone || !authPassword) {
+      if (!fullName || !authEmail || !authPassword) {
         setNotification({ isOpen: true, message: "الرجاء تعبئة جميع الحقول المطلوبة.", type: "error" });
         return;
       }
@@ -212,54 +189,97 @@ export default function PlayerLoginPage() {
 
       setAuthLoading(true);
       try {
-        const fullPhoneNumber = `${countryCode}${phone}`;
-        
-        // التحقق من أن رقم الجوال غير مستخدم مسبقاً
-        const { isUnique } = await checkPhoneUnique(fullPhoneNumber);
-        if (!isUnique) {
-          setNotification({ isOpen: true, message: "هذا البريد الإلكتروني أو رقم الجوال مستخدم.", type: "error" });
-          setAuthLoading(false);
-          return;
-        }
-
         const { data, error } = await supabase.auth.signUp({
           email: authEmail,
           password: authPassword,
           options: {
             data: {
               full_name: fullName.trim(),
-              phone_number: fullPhoneNumber,
             },
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
           },
         });
         
         // التقاط خطأ الإيميل المستخدم
         if (error) {
           if (error.status === 422 || (error.message && error.message.includes("already registered"))) {
-            throw new Error("هذا البريد الإلكتروني أو رقم الجوال مستخدم.");
+            throw new Error("هذا البريد الإلكتروني مستخدم مسبقاً.");
           }
           throw error;
         }
 
-        // بعد التسجيل، نتأكد أن الجلسة مفعلة قبل الانتقال
-        // Supabase قد يعيد جلسة مباشرة إذا كان Confirm Email معطلاً
-        if (data.session) {
-          setNotification({ isOpen: true, message: "تم إنشاء الحساب بنجاح! جاري توجيهك...", type: "success" });
-          // الانتظار قليلاً ثم تحديث الصفحة بالكامل لضمان أن الـ Middleware يقرأ الجلسة الجديدة
-          setTimeout(() => {
-            window.location.href = "/";
-          }, 1500);
-        } else {
-          // في حال كان تأكيد الإيميل مفعلاً
-          setNotification({ isOpen: true, message: "تم إنشاء الحساب! الرجاء تفعيل حسابك من البريد الإلكتروني.", type: "success" });
-        }
+        // عرض شاشة إدخال رمز التحقق OTP
+        setShowOtpScreen(true);
+
       } catch (error: any) {
         console.error("Email auth error:", error);
         setNotification({ isOpen: true, message: error.message || "حدث خطأ أثناء التسجيل.", type: "error" });
       } finally {
         setAuthLoading(false);
       }
+    }
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (value.length > 1) value = value.slice(-1);
+    if (!/^\d*$/.test(value)) return;
+    const newOtp = [...otpCode];
+    newOtp[index] = value;
+    setOtpCode(newOtp);
+    if (value && index < 5) {
+      otpInputsRef.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !otpCode[index] && index > 0) {
+      otpInputsRef.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpSubmit = async () => {
+    const code = otpCode.join("");
+    if (code.length !== 6) {
+      setNotification({ isOpen: true, message: "الرجاء إدخال الرمز المكون من 6 أرقام.", type: "error" });
+      return;
+    }
+    setOtpLoading(true);
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: authEmail,
+        token: code,
+        type: "signup",
+      });
+      if (error) {
+        setNotification({ isOpen: true, message: "الرمز غير صحيح أو منتهي الصلاحية. حاول مرة أخرى.", type: "error" });
+      } else if (data.session) {
+        setNotification({ isOpen: true, message: "تم تفعيل حسابك بنجاح! جاري توجيهك...", type: "success" });
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 1500);
+      }
+    } catch (err) {
+      setNotification({ isOpen: true, message: "حدث خطأ غير متوقع. حاول مرة أخرى.", type: "error" });
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setOtpLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: authEmail,
+      });
+      if (error) {
+        setNotification({ isOpen: true, message: "تعذّر إعادة الإرسال. حاول بعد قليل.", type: "error" });
+      } else {
+        setNotification({ isOpen: true, message: "تم إعادة إرسال رمز التحقق إلى بريدك الإلكتروني.", type: "success" });
+      }
+    } catch (err) {
+      setNotification({ isOpen: true, message: "حدث خطأ غير متوقع.", type: "error" });
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -298,6 +318,64 @@ export default function PlayerLoginPage() {
       {/* محتوى تسجيل الدخول */}
       <div className="flex-1 flex items-center justify-center p-4 relative z-10 w-full my-8">
         <div className="w-full max-w-md bg-white dark:bg-slate-800 border-4 border-blue-500 rounded-[2rem] p-6 md:p-8 shadow-2xl animate-in zoom-in-95">
+
+          {showOtpScreen ? (
+            <>
+              {/* شاشة إدخال رمز التحقق OTP */}
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 rounded-3xl mx-auto flex items-center justify-center mb-6 border-b-4 border-emerald-200 dark:border-emerald-800">
+                <ShieldCheck size={36} strokeWidth={2.5} />
+              </div>
+              <h2 className="text-2xl md:text-3xl font-black text-center text-slate-900 dark:text-white mb-2">
+                تأكيد البريد الإلكتروني
+              </h2>
+              <p className="text-center text-slate-500 dark:text-slate-400 font-bold mb-2 text-sm md:text-base">
+                أرسلنا رمز تحقق مكون من 6 أرقام إلى
+              </p>
+              <p className="text-center text-blue-600 dark:text-blue-400 font-black mb-6 text-sm md:text-base" dir="ltr">
+                {authEmail}
+              </p>
+
+              <div className="flex justify-center gap-2 md:gap-3 mb-6" dir="ltr">
+                {otpCode.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => { otpInputsRef.current[i] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(i, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                    className="w-12 h-14 md:w-14 md:h-16 text-center text-2xl font-black bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 transition-all"
+                  />
+                ))}
+              </div>
+
+              <button
+                onClick={handleOtpSubmit}
+                disabled={otpLoading}
+                className="w-full py-4 bg-emerald-600 border-b-4 border-emerald-800 hover:bg-emerald-500 text-white font-black text-lg rounded-2xl transition-all active:translate-y-1 active:border-b-0 disabled:opacity-50 mb-3"
+              >
+                {otpLoading ? "جاري التحقق..." : "تأكيد الرمز"}
+              </button>
+
+              <button
+                onClick={handleResendOtp}
+                disabled={otpLoading}
+                className="w-full py-3 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold text-sm rounded-2xl transition-all hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50"
+              >
+                إعادة إرسال الرمز
+              </button>
+
+              <button
+                onClick={() => { setShowOtpScreen(false); setOtpCode(["", "", "", "", "", ""]); }}
+                className="w-full py-2 mt-2 text-slate-500 dark:text-slate-400 font-bold text-sm transition-all hover:text-blue-600 dark:hover:text-blue-400"
+              >
+                ← العودة لصفحة التسجيل
+              </button>
+            </>
+          ) : (
+            <>
           <div className="w-16 h-16 md:w-20 md:h-20 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-3xl mx-auto flex items-center justify-center mb-6 border-b-4 border-blue-200 dark:border-blue-800">
             <User size={36} strokeWidth={2.5} />
           </div>
@@ -329,72 +407,7 @@ export default function PlayerLoginPage() {
                 className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 md:p-4 text-slate-900 dark:text-white font-bold outline-none focus:border-blue-500 transition-colors"
               />
 
-              {!isLoginMode && (
-                <div className="flex gap-2" dir="ltr">
-                  {/* القائمة المنسدلة العصرية */}
-                  <div className="relative">
-                    <div
-                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                      className="flex items-center justify-between gap-1 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-2xl px-3 py-3.5 md:py-4 text-slate-900 dark:text-white font-bold cursor-pointer hover:border-blue-500 transition-colors w-28 md:w-32 h-full"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <span className="text-lg">{arabCountries.find(c => c.code === countryCode)?.flag}</span>
-                        <span dir="ltr" className="text-xs md:text-sm">{countryCode}</span>
-                      </span>
-                      <ChevronDown size={16} className={`transition-transform text-slate-500 ${isDropdownOpen ? "rotate-180" : ""}`} />
-                    </div>
 
-                    {isDropdownOpen && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
-                        <div className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl z-50 overflow-hidden">
-                          <div className="p-3 border-b-2 border-slate-100 dark:border-slate-700">
-                            <div className="flex items-center bg-slate-100 dark:bg-slate-900 rounded-xl px-3 py-2">
-                              <Search size={16} className="text-slate-400" />
-                              <input
-                                type="text"
-                                placeholder="ابحث عن الدولة..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-transparent border-none outline-none px-2 text-sm text-slate-900 dark:text-white placeholder-slate-400"
-                                dir="rtl"
-                              />
-                            </div>
-                          </div>
-                          <div className="max-h-52 overflow-y-auto">
-                            {arabCountries.filter(c => c.name.includes(searchQuery) || c.code.includes(searchQuery)).map(country => (
-                              <div
-                                key={country.code}
-                                onClick={() => {
-                                  setCountryCode(country.code);
-                                  setIsDropdownOpen(false);
-                                  setSearchQuery("");
-                                }}
-                                className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors border-b border-slate-50 dark:border-slate-700/50 last:border-0"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <span className="text-xl">{country.flag}</span>
-                                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{country.name}</span>
-                                </div>
-                                <span className="text-sm font-bold text-slate-500 dark:text-slate-400" dir="ltr">{country.code}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                    placeholder="5XXXXXXXX"
-                    className="flex-1 w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 md:p-4 text-slate-900 dark:text-white font-bold outline-none focus:border-blue-500 transition-colors text-right"
-                    dir="rtl"
-                  />
-                </div>
-              )}
 
               <input
                 type="password"
@@ -484,6 +497,8 @@ export default function PlayerLoginPage() {
               المتابعة باستخدام Apple
             </button>
           </div>
+            </>
+          )}
         </div>
       </div>
 
