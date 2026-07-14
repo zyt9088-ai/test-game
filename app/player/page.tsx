@@ -173,7 +173,14 @@ export default function PlayerLoginPage() {
         window.location.href = "/";
       } catch (error: any) {
         console.error("Email auth error:", error);
-        setNotification({ isOpen: true, message: "تأكد من صحة البيانات أو إن الحساب غير موجود مسبقاً.", type: "error" });
+        if (error.message && error.message.toLowerCase().includes("email not confirmed")) {
+          // إذا الحساب موجود بس مو موثق، نرسل له الكود من جديد ونفتح شاشة الـ OTP
+          await supabase.auth.resend({ type: "signup", email: authEmail });
+          setShowOtpScreen(true);
+          setNotification({ isOpen: true, message: "هذا الحساب غير موثق. أرسلنا لك رمز تفعيل جديد لبريدك.", type: "success" });
+        } else {
+          setNotification({ isOpen: true, message: "تأكد من صحة البيانات أو إن الحساب غير موجود مسبقاً.", type: "error" });
+        }
       } finally {
         setAuthLoading(false);
       }
