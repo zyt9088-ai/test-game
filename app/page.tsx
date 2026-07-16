@@ -11,7 +11,7 @@ const tajawal = Tajawal({
 });
 
 export const metadata = {
-  title: "منصة ألعاب لدن | Lden Gaming Platform",
+  title: "منصة ألعاب لدن",
   description: "شريكك التقني لتطوير مواقع وتطبيقات حديثة تلبي طموحاتك وتعزز نجاحك في العالم الرقمي.",
 };
 
