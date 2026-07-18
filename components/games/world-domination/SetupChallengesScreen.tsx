@@ -87,65 +87,80 @@ export default function SetupChallengesScreen({
               }
             >
               <Geographies geography={geoUrl}>
-                {({ geographies }) =>
-                  geographies.map((geo) => {
-                    const country = countries.find(
-                      (c) => c.geoId === geo.id
-                    );
-                    let fillColor = "#f1f5f9";
-                    if (country) {
-                      fillColor = country.isChallenge
-                        ? "#a855f7"
-                        : "#cbd5e1";
-                    }
-                    return (
-                      <Geography
-                        key={geo.rsmKey}
-                        geography={geo}
-                        onClick={() => handleCountryClick(geo.id)}
-                        style={{
-                          default: {
-                            fill: fillColor,
-                            outline: "none",
-                            stroke: "#334155",
-                            strokeWidth: 0.8,
-                          },
-                          hover: {
-                            fill: country ? "#9333ea" : fillColor,
-                            cursor: country ? "pointer" : "default",
-                            outline: "none",
-                          },
-                        }}
-                      />
-                    );
-                  })
-                }
+                {({ geographies }) => (
+                  <>
+                    {geographies.map((geo) => {
+                      const country = countries.find(
+                        (c) => c.geoId === geo.id
+                      );
+                      let fillColor = "#f1f5f9";
+                      if (country) {
+                        fillColor = country.isChallenge
+                          ? "#a855f7"
+                          : "#cbd5e1";
+                      }
+                      return (
+                        <Geography
+                          key={geo.rsmKey}
+                          geography={geo}
+                          onClick={() => handleCountryClick(geo.id)}
+                          style={{
+                            default: {
+                              fill: fillColor,
+                              outline: "none",
+                              stroke: "#334155",
+                              strokeWidth: 0.8,
+                            },
+                            hover: {
+                              fill: country ? "#9333ea" : fillColor,
+                              cursor: country ? "pointer" : "default",
+                              outline: "none",
+                            },
+                          }}
+                        />
+                      );
+                    })}
+                    {geographies.map((geo) => {
+                      const c = countries.find((c) => c.geoId === geo.id);
+                      if (!c) return null;
+
+                      const centroid = geoCentroid(geo);
+                      if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1]))
+                        return null;
+
+                      // إزاحة مخصصة لفرنسا
+                      let dx = 0;
+                      let dy = 3;
+                      if (c.name && c.name.includes("فرنسا")) {
+                        dx = 12;
+                        dy = -10;
+                      }
+
+                      return (
+                        <Marker
+                          key={`m-${c.id}`}
+                          coordinates={centroid as [number, number]}
+                        >
+                          <text
+                            textAnchor="middle"
+                            dx={dx}
+                            dy={dy}
+                            fill="#1e293b"
+                            style={{
+                              fontFamily: "Cairo",
+                              fontSize: "8px",
+                              fontWeight: "900",
+                              pointerEvents: "none",
+                            }}
+                          >
+                            {c.name}
+                          </text>
+                        </Marker>
+                      );
+                    })}
+                  </>
+                )}
               </Geographies>
-              {countries.map((c) => {
-                const centroid = geoCentroid({ id: c.geoId } as any);
-                if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1]))
-                  return null;
-                return (
-                  <Marker
-                    key={`m-${c.id}`}
-                    coordinates={centroid as [number, number]}
-                  >
-                    <text
-                      textAnchor="middle"
-                      y={3}
-                      fill="#1e293b"
-                      style={{
-                        fontFamily: "Cairo",
-                        fontSize: "8px",
-                        fontWeight: "900",
-                        pointerEvents: "none",
-                      }}
-                    >
-                      {c.name}
-                    </text>
-                  </Marker>
-                );
-              })}
             </ZoomableGroup>
           </ComposableMap>
         </div>

@@ -8,7 +8,30 @@ export function useWDSync(ctx: any) {
     } catch (e) {
       console.error("خطأ في المزامنة اللحظية:", e);
     }
-  }, 400);
+  }, 100);
+
+  useEffect(() => {
+    if (!ctx.supabase || !ctx.roomCode) return;
+
+    // Create and subscribe to channel once
+    const channel = ctx.supabase.channel(`wd_live_sync_channel_${ctx.roomCode}`);
+    channel.subscribe();
+
+    return () => {
+      ctx.supabase.removeChannel(channel);
+    };
+  }, [ctx.supabase, ctx.roomCode]);
+
+  useEffect(() => {
+    if (ctx.isTimerRunning && ctx.timer !== undefined && ctx.supabase && ctx.roomCode) {
+      const channel = ctx.supabase.channel(`wd_live_sync_channel_${ctx.roomCode}`);
+      channel.send({
+        type: 'broadcast',
+        event: 'timer_update',
+        payload: { timer: ctx.timer }
+      });
+    }
+  }, [ctx.timer, ctx.isTimerRunning, ctx.supabase, ctx.roomCode]);
 
   useEffect(() => {
     if (!ctx.isInitialized || !ctx.roomCode) return;
@@ -61,11 +84,4 @@ export function useWDSync(ctx: any) {
     ctx.isInitialized, ctx.supabase, ctx.roomCode
   ]);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (ctx.isTimerRunning && ctx.timer > 0)
-      interval = setInterval(() => ctx.setTimer((t: number) => t - 1), 1000);
-    else if (ctx.timer === 0) ctx.setIsTimerRunning(false);
-    return () => clearInterval(interval);
-  }, [ctx.isTimerRunning, ctx.timer]);
 }

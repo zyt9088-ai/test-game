@@ -81,107 +81,121 @@ export default function SetupCapitalsScreen({
               }
             >
               <Geographies geography={geoUrl}>
-                {({ geographies }) =>
-                  geographies.map((geo) => {
-                    const country = countries.find(
-                      (c) => c.geoId === geo.id
-                    );
-                    let fillColor = "#f1f5f9";
-                    if (country) {
-                      if (country.owner === 1) fillColor = "#06b6d4";
-                      else if (country.owner === 2)
-                        fillColor = "#f43f5e";
-                      else if (country.isChallenge)
-                        fillColor = "#a855f7";
-                      else fillColor = "#facc15";
-                    }
-                    return (
-                      <Geography
-                        key={geo.rsmKey}
-                        geography={geo}
-                        onClick={() => handleCountryClick(geo.id)}
-                        style={{
-                          default: {
-                            fill: fillColor,
-                            outline: "none",
-                            stroke: "#334155",
-                            strokeWidth: country?.owner ? 1.5 : 0.8,
-                          },
-                          hover: {
-                            fill: country ? "#3b82f6" : fillColor,
-                            cursor: "pointer",
-                            outline: "none",
-                            strokeWidth: 1.5,
-                          },
-                        }}
-                      />
-                    );
-                  })
-                }
+                {({ geographies }) => (
+                  <>
+                    {geographies.map((geo) => {
+                      const country = countries.find(
+                        (c) => c.geoId === geo.id
+                      );
+                      let fillColor = "#f1f5f9";
+                      if (country) {
+                        if (country.owner === 1) fillColor = "#06b6d4";
+                        else if (country.owner === 2)
+                          fillColor = "#f43f5e";
+                        else if (country.isChallenge)
+                          fillColor = "#a855f7";
+                        else fillColor = "#facc15";
+                      }
+                      return (
+                        <Geography
+                          key={geo.rsmKey}
+                          geography={geo}
+                          onClick={() => handleCountryClick(geo.id)}
+                          style={{
+                            default: {
+                              fill: fillColor,
+                              outline: "none",
+                              stroke: "#334155",
+                              strokeWidth: country?.owner ? 1.5 : 0.8,
+                            },
+                            hover: {
+                              fill: country ? "#3b82f6" : fillColor,
+                              cursor: "pointer",
+                              outline: "none",
+                              strokeWidth: 1.5,
+                            },
+                          }}
+                        />
+                      );
+                    })}
+                    {geographies.map((geo) => {
+                      const c = countries.find((c) => c.geoId === geo.id);
+                      if (!c) return null;
+
+                      const centroid = geoCentroid(geo);
+                      if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1]))
+                        return null;
+
+                      const isProtected = protectedCountries[c.id];
+
+                      let label = c.name;
+                      if (c.id === capitals.team1 || c.id === capitals.team2) {
+                        label += " 👑";
+                      }
+
+                      // إزاحة مخصصة لفرنسا
+                      let dx = 0;
+                      let dy = 3;
+                      if (c.name && c.name.includes("فرنسا")) {
+                        dx = 12;
+                        dy = -10;
+                      }
+
+                      return (
+                        <Marker
+                          key={`m-${c.id}`}
+                          coordinates={centroid as [number, number]}
+                        >
+                          {isProtected && (
+                            <g transform="translate(0, -14)">
+                              <circle
+                                r="8"
+                                fill="#10b981"
+                                stroke="#fff"
+                                strokeWidth="1"
+                              />
+                              <Shield
+                                width="10"
+                                height="10"
+                                x="-5"
+                                y="-5"
+                                color="white"
+                                strokeWidth="2.5"
+                              />
+                            </g>
+                          )}
+                          {c.isStolen && (
+                            <g transform="translate(0, -18)">
+                              <Swords
+                                width="18"
+                                height="18"
+                                x="-9"
+                                y="-9"
+                                color="black"
+                                strokeWidth="3"
+                              />
+                            </g>
+                          )}
+                          <text
+                            textAnchor="middle"
+                            dx={dx}
+                            dy={dy}
+                            fill={c.owner ? "#fff" : "#1e293b"}
+                            style={{
+                              fontFamily: "Cairo",
+                              fontSize: "8px",
+                              fontWeight: "900",
+                              pointerEvents: "none",
+                            }}
+                          >
+                            {label}
+                          </text>
+                        </Marker>
+                      );
+                    })}
+                  </>
+                )}
               </Geographies>
-              {countries.map((c) => {
-                const centroid = geoCentroid({ id: c.geoId } as any);
-                if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1]))
-                  return null;
-
-                const isProtected = protectedCountries[c.id];
-
-                let label = c.name;
-                if (c.id === capitals.team1 || c.id === capitals.team2) {
-                  label += " 👑";
-                }
-
-                return (
-                  <Marker
-                    key={`m-${c.id}`}
-                    coordinates={centroid as [number, number]}
-                  >
-                    {isProtected && (
-                      <g transform="translate(0, -14)">
-                        <circle
-                          r="8"
-                          fill="#10b981"
-                          stroke="#fff"
-                          strokeWidth="1"
-                        />
-                        <Shield
-                          width="10"
-                          height="10"
-                          x="-5"
-                          y="-5"
-                          color="white"
-                          strokeWidth="2.5"
-                        />
-                      </g>
-                    )}
-                    {c.isStolen && (
-                      <g transform="translate(0, -18)">
-                        <Swords
-                          width="18"
-                          height="18"
-                          x="-9"
-                          y="-9"
-                          color="black"
-                          strokeWidth="3"
-                        />
-                      </g>
-                    )}
-                    <text
-                      textAnchor="middle"
-                      y={3}
-                      fill={c.owner ? "#fff" : "#1e293b"}
-                      style={{
-                        fontFamily: "Cairo",
-                        fontSize: "8px",
-                        fontWeight: "900",
-                        pointerEvents: "none",
-                      }}
-                    >
-                      {label}
-                    </text>
-                  </Marker>
-                );
-              })}
             </ZoomableGroup>
           </ComposableMap>
         </div>

@@ -24,6 +24,17 @@ export function useWDMapActions(ctx: any) {
         ctx.showAlert("هذه الدولة تابعة لفريقكم بالفعل!");
         return;
       }
+
+      // شرط دول الحكم (دولة التحدي): يجب الانتهاء من جميع الدول الرئيسية أولاً
+      if (country.isChallenge) {
+        const hasUnownedMainCountries = ctx.countries.some(
+          (c: any) => c.isActive && !c.isChallenge && !c.owner
+        );
+        if (hasUnownedMainCountries) {
+          ctx.showAlert("يجب الإنتهاء من جميع الدول الأساسية أولاً قبل التمكن من اختيار دول الحكم!");
+          return;
+        }
+      }
     }
 
     if (ctx.gameState === "setupMap") {
@@ -158,7 +169,7 @@ export function useWDMapActions(ctx: any) {
     }
 
     ctx.setSelectedCountry({ ...country, activeQuestion: activeQ });
-    ctx.setTimer(20);
+    ctx.setTimer(25);
     ctx.setTeam1Choice(null);
     ctx.setTeam2Choice(null);
     ctx.setShowResult(false);
@@ -166,7 +177,7 @@ export function useWDMapActions(ctx: any) {
 
     ctx.setIsAttacking(false);
 
-    ctx.setIsQuestionRevealed(false);
+    ctx.setIsQuestionRevealed(true);
     ctx.setForcedWinner(null);
   };
 

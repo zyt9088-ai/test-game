@@ -1,3 +1,5 @@
+import React from "react";
+
 export function useWDCombatActions(ctx: any) {
   const endTurn = () => {
     ctx.setSelectedCountry(null);
@@ -15,6 +17,15 @@ export function useWDCombatActions(ctx: any) {
     if (currentCountries.filter((c: any) => c.owner === null).length === 0) {
       setTimeout(() => ctx.setGameState("gameOver"), 1500);
     }
+  };
+
+  const handleForceEndGame = () => {
+    ctx.showConfirm(
+      "هل أنت متأكد من رغبتك في إنهاء اللعبة وإعلان الفائز الآن؟",
+      () => {
+        ctx.setGameState("gameOver");
+      }
+    );
   };
 
   const handleChangeQuestion = () => {
@@ -120,26 +131,26 @@ export function useWDCombatActions(ctx: any) {
     });
   };
 
-  const handleConfirmAnswers = () => {
+  const handleConfirmAnswers = (bypassValidation = false) => {
     if (ctx.selectedCountry.isChallenge) {
       if (ctx.turn === 1) ctx.setChallengesUsed1((prev: number) => prev + 1);
       else ctx.setChallengesUsed2((prev: number) => prev + 1);
     }
 
-    if (ctx.isAttacking) {
-      const attackerChoice = ctx.turn === 1 ? ctx.team1Choice : ctx.team2Choice;
-      if (!attackerChoice) {
-        ctx.showAlert("لازم تختار إجابة الفريق المهاجم أولاً!");
-        return;
+    if (bypassValidation !== true) {
+      if (ctx.isAttacking) {
+        const attackerChoice = ctx.turn === 1 ? ctx.team1Choice : ctx.team2Choice;
+        if (!attackerChoice) {
+          ctx.showAlert("لازم تختار إجابة الفريق المهاجم أولاً!");
+          return;
+        }
+      } else {
+        const activeTeamChoice = ctx.turn === 1 ? ctx.team1Choice : ctx.team2Choice;
+        if (!activeTeamChoice) {
+          ctx.showAlert("لازم تختار إجابة الفريق أولاً!");
+          return;
+        }
       }
-      ctx.setShowResult(true);
-      ctx.setIsTimerRunning(false);
-      return;
-    }
-
-    if (!ctx.team1Choice || !ctx.team2Choice) {
-      ctx.showAlert("لازم تختار إجابة الفريقين أولاً عشان تعتمد النتيجة!");
-      return;
     }
 
     ctx.setShowResult(true);
@@ -237,22 +248,15 @@ export function useWDCombatActions(ctx: any) {
 
     if (ctx.isAttacking) {
       if (isOpponentCapital) {
-        const penalty = Math.floor(
-          (ctx.turn === 1 ? finalScore2 : finalScore1) / 3
-        );
-        if (ctx.turn === 1) finalScore1 = Math.max(0, finalScore1 - penalty);
-        else finalScore2 = Math.max(0, finalScore2 - penalty);
         ctx.showAlert(
-          `إجابة خاطئة! تم معاقبة المهاجم بخصم ${penalty} نقطة (ثلث نقاط الخصم) من رصيده.`
+          <div className="flex items-center justify-center gap-2">
+            <span>فشل السيطرة على عاصمة العدو</span>
+            <span className="text-rose-600 text-2xl drop-shadow-md">☠️</span>
+          </div>
         );
       } else {
-        const penalty = Math.floor(ctx.selectedCountry.value / 2);
-        if (ctx.selectedCountry.lastOwner === 1)
-          finalScore1 = Math.max(0, finalScore1 - penalty);
-        if (ctx.selectedCountry.lastOwner === 2)
-          finalScore2 = Math.max(0, finalScore2 - penalty);
         ctx.showAlert(
-          `فشل الاستحلال! تم معاقبة المدافع بخصم ${penalty} نقطة (نصف قيمة الدولة) من رصيده.`
+          `إجابة خاطئة! فشل الاستحلال، ولم يتم خصم أي نقاط من المدافع.`
         );
       }
     }
@@ -295,6 +299,7 @@ export function useWDCombatActions(ctx: any) {
     handleConfirmAnswers,
     handleCapture,
     handleMiss,
-    endTurn
+    endTurn,
+    handleForceEndGame
   };
 }

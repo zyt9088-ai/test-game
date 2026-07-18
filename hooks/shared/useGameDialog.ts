@@ -1,10 +1,10 @@
-import { useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 
 export interface DialogState {
   isOpen: boolean;
   type: "success" | "error" | "warning" | "info" | "confirm";
-  title: string;
-  message: string;
+  title: string | React.ReactNode;
+  message: string | React.ReactNode;
   confirmText?: string;
   cancelText?: string;
   onConfirm?: () => void;
@@ -21,13 +21,13 @@ export function useGameDialog() {
     message: "",
   });
 
-  const showAlert = useCallback((title: string, message: string, type: DialogState["type"] = "info") => {
+  const showAlert = useCallback((title: string | React.ReactNode, message: string | React.ReactNode, type: DialogState["type"] = "info") => {
     setDialog({ isOpen: true, title, message, type });
   }, []);
 
   const showConfirm = useCallback((
-    title: string, 
-    message: string, 
+    title: string | React.ReactNode, 
+    message: string | React.ReactNode, 
     onConfirm: () => void,
     confirmText: string = "تأكيد",
     cancelText: string = "إلغاء",

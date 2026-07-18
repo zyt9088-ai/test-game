@@ -47,8 +47,10 @@ export function useWDCardsActions(ctx: any) {
         ctx.showAlert("لقد استنفذ الفريق جميع بطاقات غزو العاصمة!");
         return;
       }
-      if ((ctx.turn === 1 ? ctx.score1 : ctx.score2) < 6000) {
-        ctx.showAlert("رصيدكم لا يتجاوز 6000 نقطة! لا يمكنكم الهجوم على عاصمة الخصم.");
+      const attackerScore = ctx.turn === 1 ? ctx.score1 : ctx.score2;
+      const defenderScore = ctx.turn === 1 ? ctx.score2 : ctx.score1;
+      if (attackerScore <= 5000 || defenderScore <= 10000) {
+        ctx.showAlert("يجب أن تكون نقاط فريقكم أكثر من 5000 ونقاط الخصم أكثر من 10000 نقطة للتمكن من الهجوم على العاصمة.");
         return;
       }
     } else {
@@ -118,7 +120,7 @@ export function useWDCardsActions(ctx: any) {
 
     if (isOpponentCapital) {
       ctx.showAlert(
-        "ممنوع! لا يمكن قصف العاصمة بالصواريخ. يجب الهجوم عليها بالمواجهة المباشرة (الاستحلال) وفقط إذا كان رصيدك فوق 6000 نقطة."
+        "ممنوع! لا يمكن قصف العاصمة بالصواريخ. يجب الهجوم عليها بالمواجهة المباشرة (غزو العاصمة) وفقط إذا كانت نقاطكم أكثر من 5000 ونقاط الخصم أكثر من 10000."
       );
       return;
     }

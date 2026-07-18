@@ -39,7 +39,7 @@ export default function WorldDominationGame() {
     startGame, randomizeMap, confirmMap, confirmChallenges, handleCountryClick,
     handleChangeQuestion, handleRefereeChangeQuestion, adjustScore, handleManualFree,
     handleSpyAction, handleConfirmAnswers, handleCapture, handleMiss,
-    countriesLeft, team1Owned, team2Owned,
+    countriesLeft, team1Owned, team2Owned, handleForceEndGame,
     useCaptureCard, useAirStrike, useProtectCard, isAccessChecking
   } = useWorldDomination();
 
@@ -89,6 +89,7 @@ export default function WorldDominationGame() {
           roomCode={roomCode}
           handleGoHome={handleGoHome}
           handleGoBack={handleGoBack}
+          handleForceEndGame={handleForceEndGame}
           showAlert={showAlert}
           setShowAudienceModal={setShowAudienceModal}
         />
@@ -169,7 +170,13 @@ export default function WorldDominationGame() {
             handleCountryClick={handleCountryClick}
           />
         ) : (
-          <GameOverScreen startGame={startGame} />
+          <GameOverScreen
+            startGame={startGame}
+            team1Name={team1Name}
+            team2Name={team2Name}
+            score1={score1}
+            score2={score2}
+          />
         )}
       </div>
 

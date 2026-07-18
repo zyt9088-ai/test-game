@@ -3,14 +3,14 @@ import { useState } from "react";
 export function useWDCards() {
   const [cards1, setCards1] = useState({
     capture: 3,
-    protect: 5,
+    protect: 3,
     airStrike: 3,
     capitalCapture: 2,
     spy: 2,
   });
   const [cards2, setCards2] = useState({
     capture: 3,
-    protect: 5,
+    protect: 3,
     airStrike: 3,
     capitalCapture: 2,
     spy: 2,

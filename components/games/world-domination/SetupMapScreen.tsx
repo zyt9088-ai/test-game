@@ -103,80 +103,85 @@ export default function SetupMapScreen({
               }
             >
               <Geographies geography={geoUrl}>
-                {({ geographies }) =>
-                  geographies.map((geo) => {
-                    const country = countries.find(
-                      (c) => c.geoId === geo.id
-                    );
-                    let fillColor = "#cbd5e1";
-                    if (country && country.isActive) {
-                      fillColor = "#0ea5e9";
-                    }
-                    return (
-                      <Geography
-                        key={geo.rsmKey}
-                        geography={geo}
-                        onClick={() => handleCountryClick(geo.id)}
-                        style={{
-                          default: {
-                            fill: fillColor,
-                            outline: "none",
-                            stroke: "#334155",
-                            strokeWidth: country?.isActive ? 1.5 : 0.5,
-                          },
-                          hover: {
-                            fill: country
-                              ? country.isActive
-                                ? "#0284c7"
-                                : "#94a3b8"
-                              : fillColor,
-                            cursor: country ? "pointer" : "default",
-                            outline: "none",
-                          },
-                        }}
-                      />
-                    );
-                  })
-                }
+                {({ geographies }) => (
+                  <>
+                    {geographies.map((geo) => {
+                      const country = countries.find(
+                        (c) => c.geoId === geo.id
+                      );
+                      let fillColor = "#cbd5e1";
+                      if (country && country.isActive) {
+                        fillColor = "#0ea5e9";
+                      }
+                      return (
+                        <Geography
+                          key={geo.rsmKey}
+                          geography={geo}
+                          onClick={() => handleCountryClick(geo.id)}
+                          style={{
+                            default: {
+                              fill: fillColor,
+                              outline: "none",
+                              stroke: "#334155",
+                              strokeWidth: country?.isActive ? 1.5 : 0.5,
+                            },
+                            hover: {
+                              fill: country
+                                ? country.isActive
+                                  ? "#0284c7"
+                                  : "#94a3b8"
+                                : fillColor,
+                              cursor: country ? "pointer" : "default",
+                              outline: "none",
+                            },
+                          }}
+                        />
+                      );
+                    })}
+                    {geographies.map((geo) => {
+                      const c = countries.find((c) => c.geoId === geo.id);
+                      if (!c) return null;
+
+                      const centroid = geoCentroid(geo);
+                      if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1]))
+                        return null;
+
+                      // إزاحة مخصصة لفرنسا عشان تنفصل عن إسبانيا بشكل كامل
+                      let dx = 0;
+                      let dy = 3; // هذا النزول الافتراضي لباقي الدول
+                      
+                      // استخدمنا includes عشان يصيدها حتى لو فيها مسافات بالغلط
+                      if (c.name && c.name.includes("فرنسا")) {
+                        dx = 12;   // دزيناها يمين بزيادة
+                        dy = -10;  // رفعناها فوق بزيادة
+                      }
+
+                      return (
+                        <Marker
+                          key={`m-${c.id}`}
+                          coordinates={centroid as [number, number]}
+                        >
+                          <text
+                            textAnchor="middle"
+                            dx={dx}
+                            dy={dy}
+                            fill={c.isActive ? "#fff" : "#64748b"}
+                            style={{
+                              fontFamily: "Cairo",
+                              fontSize: "8px",
+                              fontWeight: "900",
+                              pointerEvents: "none",
+                              opacity: c.isActive ? 1 : 0.6,
+                            }}
+                          >
+                            {c.name}
+                          </text>
+                        </Marker>
+                      );
+                    })}
+                  </>
+                )}
               </Geographies>
-              {countries.map((c) => {
-                const centroid = geoCentroid({ id: c.geoId } as any);
-                if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1]))
-                  return null;
-
-                // إزاحة مخصصة لفرنسا عشان تنفصل عن إسبانيا بشكل كامل
-                let dx = 0;
-                let dy = 3; // هذا النزول الافتراضي لباقي الدول
-                
-                // استخدمنا includes عشان يصيدها حتى لو فيها مسافات بالغلط
-                if (c.name && c.name.includes("فرنسا")) {
-                  dx = 12;   // دزيناها يمين بزيادة
-                  dy = -10;  // رفعناها فوق بزيادة
-                }
-
-                return (
-                  <Marker
-                    key={`m-${c.id}`}
-                    coordinates={centroid as [number, number]}
-                  >
-                    <text
-                      textAnchor="middle"
-                      dx={dx}
-                      dy={dy}
-                      fill={c.isActive ? "#fff" : "#64748b"}
-                      style={{
-                        fontFamily: "Cairo",
-                        fontSize: "8px",
-                        fontWeight: "900",
-                        pointerEvents: "none",
-                        opacity: c.isActive ? 1 : 0.6,
-                      }}
-                    >
-                      {c.name}
-                    </text>
-                  </Marker>
-                );
-              })}
             </ZoomableGroup>
           </ComposableMap>
         </div>

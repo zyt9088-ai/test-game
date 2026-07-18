@@ -58,8 +58,8 @@ export function useWDSetupActions(ctx: any) {
     ctx.setTurn(1);
     ctx.setChallengesUsed1(0);
     ctx.setChallengesUsed2(0);
-    ctx.setCards1({ capture: 3, protect: 5, airStrike: 3, capitalCapture: 2, spy: 2 });
-    ctx.setCards2({ capture: 3, protect: 5, airStrike: 3, capitalCapture: 2, spy: 2 });
+    ctx.setCards1({ capture: 3, protect: 3, airStrike: 3, capitalCapture: 2, spy: 2 });
+    ctx.setCards2({ capture: 3, protect: 3, airStrike: 3, capitalCapture: 2, spy: 2 });
     ctx.setProtectedCountries({});
     ctx.setSpiedCountryId(null);
     ctx.setIsAttacking(false);

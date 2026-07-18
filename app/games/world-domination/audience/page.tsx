@@ -104,7 +104,7 @@ export default function WorldDominationAudience() {
     fetchInitialData();
 
     const channel = supabase
-      .channel('wd_live_sync_channel')
+      .channel(`wd_live_sync_channel_${roomCode}`)
       .on(
         'postgres_changes',
         {
@@ -118,6 +118,13 @@ export default function WorldDominationAudience() {
           if (newData) {
             setLiveData(mapColumnsToLiveData(newData));
           }
+        }
+      )
+      .on(
+        'broadcast',
+        { event: 'timer_update' },
+        (payload) => {
+          setLiveData((prev: any) => prev ? { ...prev, timer: payload.payload.timer } : null);
         }
       )
       .subscribe();
@@ -224,7 +231,7 @@ export default function WorldDominationAudience() {
 
         {/* صندوق الفريق الأول */}
         <div
-          className={`col-span-1 lg:col-span-1 order-2 lg:order-1 bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-3xl lg:rounded-[2.5rem] border-2 flex flex-col p-4 lg:p-6 shadow-xl dark:shadow-2xl transition-colors ${turn === 1 ? "border-cyan-400 dark:border-cyan-500/50 ring-4 ring-cyan-400/20 dark:ring-cyan-500/10" : "border-slate-200 dark:border-slate-800"}`}
+          className={`col-span-2 lg:col-span-1 order-1 lg:order-1 bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-3xl lg:rounded-[2.5rem] border-2 flex flex-col p-4 lg:p-6 shadow-xl dark:shadow-2xl transition-colors ${turn === 1 ? "border-cyan-400 dark:border-cyan-500/50 ring-4 ring-cyan-400/20 dark:ring-cyan-500/10" : "border-slate-200 dark:border-slate-800"}`}
         >
           <div className="flex flex-col items-center mb-4 lg:mb-6 pb-4 lg:pb-6 border-b border-slate-200 dark:border-slate-700/50">
             <h2 className="text-xl lg:text-4xl font-black text-cyan-600 dark:text-cyan-400 mb-2 lg:mb-3 drop-shadow-sm text-center leading-snug truncate w-full">
@@ -235,32 +242,44 @@ export default function WorldDominationAudience() {
               <Coins className="w-6 h-6 lg:w-10 lg:h-10 text-yellow-500 dark:text-yellow-400 shrink-0" />
             </div>
 
-            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-2 mt-4 text-[9px] lg:text-[11px] font-black tracking-wide w-full">
-              <span className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-950/60 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300">
-                <TankIcon size={12} className="lg:w-[14px] lg:h-[14px]" />{" "}
-                <span className="hidden sm:inline">استحلال:</span>{" "}
-                {cards1.capture}
-              </span>
-              <span className="flex items-center justify-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/30 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400">
-                <Shield size={12} className="lg:w-[14px] lg:h-[14px]" />{" "}
-                <span className="hidden sm:inline">حماية:</span>{" "}
-                {cards1.protect}
-              </span>
-              <span className="flex items-center justify-center gap-1.5 bg-orange-50 dark:bg-orange-950/30 py-1.5 rounded-lg border border-orange-300 dark:border-orange-800/50 text-orange-700 dark:text-orange-400">
-                <Rocket size={12} className="lg:w-[14px] lg:h-[14px]" />{" "}
-                <span className="hidden sm:inline">قصف:</span>{" "}
-                {cards1.airStrike}
-              </span>
-              <span className="flex items-center justify-center gap-1.5 bg-amber-50 dark:bg-amber-950/30 py-1.5 rounded-lg border border-amber-300 dark:border-amber-800/50 text-amber-700 dark:text-amber-400">
-                <Crown size={12} className="lg:w-[14px] lg:h-[14px]" />{" "}
-                <span className="hidden sm:inline">غزو:</span>{" "}
-                {cards1.capitalCapture}
-              </span>
-              <span className="flex items-center justify-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/30 py-1.5 rounded-lg border border-indigo-300 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-400 md:col-span-2 2xl:col-span-2">
-                <Crosshair size={12} className="lg:w-[14px] lg:h-[14px]" />{" "}
-                <span className="hidden sm:inline">تجسس:</span>{" "}
-                {cards1.spy}
-              </span>
+            <div className="flex flex-col gap-2 mt-4 w-full">
+              <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-950/60 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 transition-colors">
+                <div className="flex items-center gap-2">
+                  <TankIcon size={16} className="lg:w-[18px] lg:h-[18px]" />
+                  <span className="font-bold text-xs lg:text-sm">احتلال 3</span>
+                </div>
+                <span className="font-black text-sm lg:text-base">{cards1.capture}</span>
+              </div>
+              <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 rounded-xl border border-emerald-300 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Shield size={16} className="lg:w-[18px] lg:h-[18px]" />
+                  <span className="font-bold text-xs lg:text-sm">حماية 5</span>
+                </div>
+                <span className="font-black text-sm lg:text-base">{cards1.protect}</span>
+              </div>
+              <div className="flex items-center justify-between bg-orange-50 dark:bg-orange-950/30 px-3 py-2 rounded-xl border border-orange-300 dark:border-orange-800/50 text-orange-700 dark:text-orange-400 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Rocket size={16} className="lg:w-[18px] lg:h-[18px]" />
+                  <span className="font-bold text-xs lg:text-sm">قصف 3</span>
+                </div>
+                <span className="font-black text-sm lg:text-base">{cards1.airStrike}</span>
+              </div>
+              <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-950/30 px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-800/50 text-amber-700 dark:text-amber-400 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Crown size={16} className="lg:w-[18px] lg:h-[18px]" />
+                  <span className="font-bold text-xs lg:text-sm">غزو العاصمة 2</span>
+                </div>
+                <span className="font-black text-sm lg:text-base">{cards1.capitalCapture}</span>
+              </div>
+              {cards1.spy > 0 && (
+                <div className="flex items-center justify-between bg-indigo-50 dark:bg-indigo-950/30 px-3 py-2 rounded-xl border border-indigo-300 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-400 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Crosshair size={16} className="lg:w-[18px] lg:h-[18px]" />
+                    <span className="font-bold text-xs lg:text-sm">تجسس</span>
+                  </div>
+                  <span className="font-black text-sm lg:text-base">{cards1.spy}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -278,17 +297,17 @@ export default function WorldDominationAudience() {
             ) : (
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 pr-1 lg:pr-2">
                 {team1Countries.map((c: any) => (
-                  <div key={c.id} className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-2 lg:p-3 rounded-lg lg:rounded-xl flex flex-col items-center justify-center text-center shadow-sm gap-1 lg:gap-2 transition-colors">
-                    <span className="font-black text-[10px] lg:text-xs text-slate-800 dark:text-slate-200 truncate w-full">
+                  <div key={c.id} className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-1.5 lg:p-2 rounded-lg flex items-center justify-between shadow-sm gap-1 transition-colors">
+                    <span className="font-black text-[9px] lg:text-[10px] text-slate-800 dark:text-slate-200 truncate max-w-[60%]">
                       {c.name}
                     </span>
-                    <div className="flex items-center justify-center gap-1 flex-wrap mt-0.5">
+                    <div className="flex items-center gap-1 shrink-0">
                       {c.id === capitals.team1 ? (
-                        <span className="text-amber-500 dark:text-amber-400 font-black text-[9px] lg:text-[10px]">العاصمة 👑</span>
+                        <span className="text-amber-500 dark:text-amber-400 font-black text-[8px] lg:text-[9px]">العاصمة 👑</span>
                       ) : (
                         <>
-                          {protectedCountries[c.id] && <Shield size={10} className="text-emerald-500 dark:text-emerald-400 lg:w-3 lg:h-3" />}
-                          <span className="text-yellow-600 dark:text-yellow-400 font-black text-[9px] lg:text-[10px]">
+                          {protectedCountries[c.id] && <Shield size={8} className="text-emerald-500 dark:text-emerald-400" />}
+                          <span className="text-yellow-600 dark:text-yellow-400 font-black text-[8px] lg:text-[9px]">
                             {c.value} 💰 {c.isStolen && "⚔️"}
                           </span>
                         </>
@@ -303,7 +322,7 @@ export default function WorldDominationAudience() {
 
         {/* صندوق الفريق الثاني */}
         <div
-          className={`col-span-1 lg:col-span-1 order-3 lg:order-3 bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-3xl lg:rounded-[2.5rem] border-2 flex flex-col p-4 lg:p-6 shadow-xl dark:shadow-2xl transition-colors ${turn === 2 ? "border-rose-400 dark:border-rose-500/50 ring-4 ring-rose-400/20 dark:ring-rose-500/10" : "border-slate-200 dark:border-slate-800"}`}
+          className={`col-span-2 lg:col-span-1 order-3 lg:order-3 bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-3xl lg:rounded-[2.5rem] border-2 flex flex-col p-4 lg:p-6 shadow-xl dark:shadow-2xl transition-colors ${turn === 2 ? "border-rose-400 dark:border-rose-500/50 ring-4 ring-rose-400/20 dark:ring-rose-500/10" : "border-slate-200 dark:border-slate-800"}`}
         >
           <div className="flex flex-col items-center mb-4 lg:mb-6 pb-4 lg:pb-6 border-b border-slate-200 dark:border-slate-700/50">
             <h2 className="text-xl lg:text-4xl font-black text-rose-600 dark:text-rose-400 mb-2 lg:mb-3 drop-shadow-sm text-center leading-snug truncate w-full">
@@ -314,32 +333,44 @@ export default function WorldDominationAudience() {
               <Coins className="w-6 h-6 lg:w-10 lg:h-10 text-yellow-500 dark:text-yellow-400 shrink-0" />
             </div>
 
-            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-2 mt-4 text-[9px] lg:text-[11px] font-black tracking-wide w-full">
-              <span className="flex items-center justify-center gap-1.5 bg-orange-50 dark:bg-orange-950/30 py-1.5 rounded-lg border border-orange-300 dark:border-orange-800/50 text-orange-700 dark:text-orange-400">
-                <Rocket size={12} className="lg:w-[14px] lg:h-[14px]" />{" "}
-                <span className="hidden sm:inline">قصف:</span>{" "}
-                {cards2.airStrike}
-              </span>
-              <span className="flex items-center justify-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/30 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400">
-                <Shield size={12} className="lg:w-[14px] lg:h-[14px]" />{" "}
-                <span className="hidden sm:inline">حماية:</span>{" "}
-                {cards2.protect}
-              </span>
-              <span className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-950/60 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300">
-                <TankIcon size={12} className="lg:w-[14px] lg:h-[14px]" />{" "}
-                <span className="hidden sm:inline">استحلال:</span>{" "}
-                {cards2.capture}
-              </span>
-              <span className="flex items-center justify-center gap-1.5 bg-amber-50 dark:bg-amber-950/30 py-1.5 rounded-lg border border-amber-300 dark:border-amber-800/50 text-amber-700 dark:text-amber-400">
-                <Crown size={12} className="lg:w-[14px] lg:h-[14px]" />{" "}
-                <span className="hidden sm:inline">غزو:</span>{" "}
-                {cards2.capitalCapture}
-              </span>
-              <span className="flex items-center justify-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/30 py-1.5 rounded-lg border border-indigo-300 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-400 md:col-span-2 2xl:col-span-2">
-                <Crosshair size={12} className="lg:w-[14px] lg:h-[14px]" />{" "}
-                <span className="hidden sm:inline">تجسس:</span>{" "}
-                {cards2.spy}
-              </span>
+            <div className="flex flex-col gap-2 mt-4 w-full">
+              <div className="flex items-center justify-between bg-orange-50 dark:bg-orange-950/30 px-3 py-2 rounded-xl border border-orange-300 dark:border-orange-800/50 text-orange-700 dark:text-orange-400 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Rocket size={16} className="lg:w-[18px] lg:h-[18px]" />
+                  <span className="font-bold text-xs lg:text-sm">قصف 3</span>
+                </div>
+                <span className="font-black text-sm lg:text-base">{cards2.airStrike}</span>
+              </div>
+              <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 rounded-xl border border-emerald-300 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Shield size={16} className="lg:w-[18px] lg:h-[18px]" />
+                  <span className="font-bold text-xs lg:text-sm">حماية 5</span>
+                </div>
+                <span className="font-black text-sm lg:text-base">{cards2.protect}</span>
+              </div>
+              <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-950/60 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 transition-colors">
+                <div className="flex items-center gap-2">
+                  <TankIcon size={16} className="lg:w-[18px] lg:h-[18px]" />
+                  <span className="font-bold text-xs lg:text-sm">احتلال 3</span>
+                </div>
+                <span className="font-black text-sm lg:text-base">{cards2.capture}</span>
+              </div>
+              <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-950/30 px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-800/50 text-amber-700 dark:text-amber-400 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Crown size={16} className="lg:w-[18px] lg:h-[18px]" />
+                  <span className="font-bold text-xs lg:text-sm">غزو العاصمة 2</span>
+                </div>
+                <span className="font-black text-sm lg:text-base">{cards2.capitalCapture}</span>
+              </div>
+              {cards2.spy > 0 && (
+                <div className="flex items-center justify-between bg-indigo-50 dark:bg-indigo-950/30 px-3 py-2 rounded-xl border border-indigo-300 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-400 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Crosshair size={16} className="lg:w-[18px] lg:h-[18px]" />
+                    <span className="font-bold text-xs lg:text-sm">تجسس</span>
+                  </div>
+                  <span className="font-black text-sm lg:text-base">{cards2.spy}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -357,17 +388,17 @@ export default function WorldDominationAudience() {
             ) : (
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 pr-1 lg:pr-2">
                 {team2Countries.map((c: any) => (
-                  <div key={c.id} className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-2 lg:p-3 rounded-lg lg:rounded-xl flex flex-col items-center justify-center text-center shadow-sm gap-1 lg:gap-2 transition-colors">
-                    <span className="font-black text-[10px] lg:text-xs text-slate-800 dark:text-slate-200 truncate w-full">
+                  <div key={c.id} className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-1.5 lg:p-2 rounded-lg flex items-center justify-between shadow-sm gap-1 transition-colors">
+                    <span className="font-black text-[9px] lg:text-[10px] text-slate-800 dark:text-slate-200 truncate max-w-[60%]">
                       {c.name}
                     </span>
-                    <div className="flex items-center justify-center gap-1 flex-wrap mt-0.5">
+                    <div className="flex items-center gap-1 shrink-0">
                       {c.id === capitals.team2 ? (
-                        <span className="text-amber-500 dark:text-amber-400 font-black text-[9px] lg:text-[10px]">العاصمة 👑</span>
+                        <span className="text-amber-500 dark:text-amber-400 font-black text-[8px] lg:text-[9px]">العاصمة 👑</span>
                       ) : (
                         <>
-                          {protectedCountries[c.id] && <Shield size={10} className="text-emerald-500 dark:text-emerald-400 lg:w-3 lg:h-3" />}
-                          <span className="text-yellow-600 dark:text-yellow-400 font-black text-[9px] lg:text-[10px]">
+                          {protectedCountries[c.id] && <Shield size={8} className="text-emerald-500 dark:text-emerald-400" />}
+                          <span className="text-yellow-600 dark:text-yellow-400 font-black text-[8px] lg:text-[9px]">
                             {c.value} 💰 {c.isStolen && "⚔️"}
                           </span>
                         </>

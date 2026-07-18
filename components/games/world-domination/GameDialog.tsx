@@ -7,7 +7,7 @@ interface GameDialogProps {
   dialog: {
     isOpen: boolean;
     type: "alert" | "confirm";
-    message: string;
+    message: string | React.ReactNode;
     onConfirm?: () => void;
   };
   closeDialog: () => void;

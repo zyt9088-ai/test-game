@@ -387,7 +387,7 @@ export default function PlayerLoginPage() {
             <User size={36} strokeWidth={2.5} />
           </div>
           <h2 className="text-2xl md:text-3xl font-black text-center text-slate-900 dark:text-white mb-2">
-            بوابة القيادة
+            التسجيل والدخول
           </h2>
           <p className="text-center text-slate-500 dark:text-slate-400 font-bold mb-8 text-sm md:text-base">
             {isLoginMode ? "سجل دخولك لبدء إدارة ألعابك وتحدياتك" : "أنشئ حسابك الجديد وانضم لعالم التحديات"}

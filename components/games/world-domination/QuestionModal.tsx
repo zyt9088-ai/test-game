@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { MapPin, Crown, RefreshCw, X, Play, Shield, Swords, Rocket, Star } from "lucide-react";
+import { MapPin, Crown, RefreshCw, X, Play, Shield, Swords, Rocket, Star, Unlock, Flag } from "lucide-react";
 
 const TankIcon = ({ className, size = 24 }: { className?: string; size?: number }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -47,7 +47,7 @@ interface QuestionModalProps {
   setProtectedCountries: any;
   setChallengesUsed1: any;
   setChallengesUsed2: any;
-  handleConfirmAnswers: () => void;
+  handleConfirmAnswers: (bypassValidation?: boolean) => void;
   handleCapture: (winner: 1 | 2, isForced?: boolean) => void;
   handleMiss: () => void;
   handleRefereeChangeQuestion: () => void;
@@ -98,6 +98,44 @@ export default function QuestionModal({
   useProtectCard,
   closeModal,
 }: QuestionModalProps) {
+  const [firstAnswerWrong, setFirstAnswerWrong] = React.useState(false);
+
+  const handleTeamChoice = (team: 1 | 2, option: string) => {
+    if (team === 1) setTeam1Choice(option);
+    else setTeam2Choice(option);
+
+    const isCorrect = option === selectedCountry.activeQuestion?.a;
+    const isActiveTeam = (team === 1 && turn === 1) || (team === 2 && turn === 2);
+
+    // في حالة الهجوم (استحلال/غزو عاصمة): الفريق المهاجم فقط يجيب → نُظهر النتيجة فوراً
+    if (isAttacking) {
+      handleConfirmAnswers(true);
+      return;
+    }
+
+    if (selectedCountry.isChallenge) {
+      // في التحدي: ننتظر الفريقين ثم نُظهر النتيجة مباشرة
+      const otherAlreadyChosen = team === 1 ? team2Choice : team1Choice;
+      if (otherAlreadyChosen) {
+        handleConfirmAnswers(true);
+      }
+      return;
+    }
+
+    if (isActiveTeam) {
+      if (isCorrect) {
+        // إجابة صحيحة → نُظهر النتيجة فوراً
+        handleConfirmAnswers(true);
+      } else {
+        // إجابة خاطئة → نُظهر خيارات الفريق الآخر
+        setFirstAnswerWrong(true);
+      }
+    } else {
+      // الفريق الثاني أجاب → نُظهر النتيجة مباشرة
+      handleConfirmAnswers(true);
+    }
+  };
+
   if (!selectedCountry) return null;
 
   return (
@@ -130,18 +168,6 @@ export default function QuestionModal({
             )}
           </span>
           <div className="flex gap-2">
-            {selectedCountry.owner === null &&
-              !isAttacking &&
-              !selectedCountry.isChallenge && (
-                <button
-                  onClick={handleChangeQuestion}
-                  className="px-2 lg:px-4 py-1 lg:py-2 bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900 dark:text-amber-300 font-bold text-[10px] lg:text-sm rounded-lg lg:rounded-xl transition-colors flex items-center gap-1 lg:gap-2 border-b-4 border-amber-300 dark:border-amber-700 active:border-b-0 active:translate-y-[4px]"
-                >
-                  <RefreshCw size={12} className="lg:w-[16px] lg:h-[16px]" />{" "}
-                  <span className="hidden sm:inline">تغيير السؤال (1000)</span>
-                  <span className="sm:hidden">تغيير (1000)</span>
-                </button>
-              )}
             <button
               onClick={closeModal}
               className="p-1 lg:p-2 hover:bg-slate-100 dark:bg-slate-800 rounded-lg lg:rounded-xl dark:text-white"
@@ -156,17 +182,17 @@ export default function QuestionModal({
             <div className="space-y-4 lg:space-y-6">
               {!selectedCountry.activeQuestion && !isAttacking ? (
                 <button
-                  onClick={handleConfirmAnswers}
-                  className="w-full py-6 lg:py-8 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-lg lg:text-2xl border-b-4 border-blue-800 active:border-b-0 active:translate-y-[4px] transition-all"
+                  onClick={() => handleConfirmAnswers()}
+                  className="w-full py-4 lg:py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-lg lg:text-2xl border-b-4 border-blue-800 active:border-b-0 active:translate-y-[4px] transition-all"
                 >
                   سحب سؤال للدولة
                 </button>
               ) : (
                 <>
-                  {!isQuestionRevealed && (
+                  {(!isQuestionRevealed && !showResult) && (
                     <button
                       onClick={() => setIsQuestionRevealed(true)}
-                      className="w-full py-2.5 lg:py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs lg:text-lg rounded-xl shadow-md transition-all mb-2 border-b-4 border-indigo-800 active:border-b-0 active:translate-y-[4px]"
+                      className="w-full py-4 lg:py-5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-lg lg:text-2xl shadow-lg border-b-4 border-indigo-800 active:border-b-0 active:translate-y-[4px] transition-all"
                     >
                       إظهار السؤال للجمهور
                     </button>
@@ -179,69 +205,78 @@ export default function QuestionModal({
                   {selectedCountry.activeQuestion.options &&
                     selectedCountry.activeQuestion.options.length > 0 && (
                       <div className="space-y-3 lg:space-y-4 w-full">
-                        {(!isAttacking || turn === 1) && (
+                        {(selectedCountry.isChallenge || (isAttacking && turn === 1) || (!isAttacking && (turn === 1 || (turn === 2 && firstAnswerWrong)))) && (
                           <div className="bg-slate-50 dark:bg-slate-800 p-2 lg:p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                             <p className="text-[10px] lg:text-base font-black text-cyan-600 dark:text-cyan-400 mb-2">
                               إجابة {team1Name}:
                             </p>
                             <div className="flex flex-col sm:flex-row gap-2">
                               {selectedCountry.activeQuestion.options.map(
-                                (o: string, i: number) => (
-                                  <button
-                                    key={i}
-                                    disabled={showResult}
-                                    onClick={() => setTeam1Choice(o)}
-                                    className={`flex-1 p-2 lg:p-3 rounded-lg font-bold text-[10px] lg:text-sm border-2 transition-all ${
-                                      team1Choice === o
-                                        ? "bg-cyan-500 border-cyan-600 text-white shadow-sm"
-                                        : "bg-white dark:bg-slate-900 dark:text-white border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-700"
-                                    }`}
-                                  >
-                                    {o}
-                                  </button>
-                                )
+                                (o: string, i: number) => {
+                                  const isCorrectAnswer = o === selectedCountry.activeQuestion?.a;
+                                  const isBothWrong = showResult && team1Choice !== selectedCountry.activeQuestion?.a && (!team2Choice || team2Choice !== selectedCountry.activeQuestion?.a);
+                                  const isFirstWrongHighlight = firstAnswerWrong && turn === 1 && team1Choice === o;
+                                  
+                                  return (
+                                    <button
+                                      key={i}
+                                      disabled={showResult || (firstAnswerWrong && turn === 1)}
+                                      onClick={() => handleTeamChoice(1, o)}
+                                      className={`flex-1 p-2 lg:p-3 rounded-lg font-bold text-[10px] lg:text-sm border-2 transition-all ${
+                                        isFirstWrongHighlight
+                                          ? "bg-rose-500 border-rose-600 text-white shadow-sm opacity-50"
+                                          : team1Choice === o
+                                          ? "bg-cyan-500 border-cyan-600 text-white shadow-sm"
+                                          : isBothWrong && isCorrectAnswer
+                                          ? "bg-emerald-500 border-emerald-600 text-white shadow-sm ring-2 ring-emerald-300"
+                                          : "bg-white dark:bg-slate-900 dark:text-white border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-700"
+                                      }`}
+                                    >
+                                      {o}
+                                    </button>
+                                  );
+                                }
                               )}
                             </div>
                           </div>
                         )}
 
-                        {(!isAttacking || turn === 2) && (
+                        {(selectedCountry.isChallenge || (isAttacking && turn === 2) || (!isAttacking && (turn === 2 || (turn === 1 && firstAnswerWrong)))) && (
                           <div className="bg-slate-50 dark:bg-slate-800 p-2 lg:p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                             <p className="text-[10px] lg:text-base font-black text-rose-600 dark:text-rose-400 mb-2">
                               إجابة {team2Name}:
                             </p>
                             <div className="flex flex-col sm:flex-row gap-2">
                               {selectedCountry.activeQuestion.options.map(
-                                (o: string, i: number) => (
-                                  <button
-                                    key={i}
-                                    disabled={showResult}
-                                    onClick={() => setTeam2Choice(o)}
-                                    className={`flex-1 p-2 lg:p-3 rounded-lg font-bold text-[10px] lg:text-sm border-2 transition-all ${
-                                      team2Choice === o
-                                        ? "bg-rose-500 border-rose-600 text-white shadow-sm"
-                                        : "bg-white dark:bg-slate-900 dark:text-white border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-700"
-                                    }`}
-                                  >
-                                    {o}
-                                  </button>
-                                )
+                                (o: string, i: number) => {
+                                  const isCorrectAnswer = o === selectedCountry.activeQuestion?.a;
+                                  const isBothWrong = showResult && team2Choice !== selectedCountry.activeQuestion?.a && (!team1Choice || team1Choice !== selectedCountry.activeQuestion?.a);
+                                  const isFirstWrongHighlight = firstAnswerWrong && turn === 2 && team2Choice === o;
+                                  
+                                  return (
+                                    <button
+                                      key={i}
+                                      disabled={showResult || (firstAnswerWrong && turn === 2)}
+                                      onClick={() => handleTeamChoice(2, o)}
+                                      className={`flex-1 p-2 lg:p-3 rounded-lg font-bold text-[10px] lg:text-sm border-2 transition-all ${
+                                        isFirstWrongHighlight
+                                          ? "bg-rose-500 border-rose-600 text-white shadow-sm opacity-50"
+                                          : team2Choice === o
+                                          ? "bg-rose-500 border-rose-600 text-white shadow-sm"
+                                          : isBothWrong && isCorrectAnswer
+                                          ? "bg-emerald-500 border-emerald-600 text-white shadow-sm ring-2 ring-emerald-300"
+                                          : "bg-white dark:bg-slate-900 dark:text-white border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-700"
+                                      }`}
+                                    >
+                                      {o}
+                                    </button>
+                                  );
+                                }
                               )}
                             </div>
                           </div>
                         )}
                       </div>
-                    )}
-
-                  {selectedCountry.activeQuestion.options &&
-                    selectedCountry.activeQuestion.options.length > 0 &&
-                    !showResult && (
-                      <button
-                        onClick={handleConfirmAnswers}
-                        className="w-full py-2.5 lg:py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-black text-xs lg:text-lg rounded-xl shadow-md transition-all mt-2 border-b-4 border-emerald-700 active:border-b-0 active:translate-y-[4px]"
-                      >
-                        اعتماد الإجابات وإظهار النتيجة
-                      </button>
                     )}
 
                   {showResult &&
@@ -273,10 +308,6 @@ export default function QuestionModal({
                           }
 
                           if (winner) {
-                            const currentCards = winner === 1 ? cards1 : cards2;
-                            const canProtectImmediately =
-                              currentCards.protect > 0 &&
-                              !protectedCountries[selectedCountry.id];
 
                             return (
                               <>
@@ -304,33 +335,8 @@ export default function QuestionModal({
                                     onClick={() => handleCapture(winner!)}
                                     className="w-full py-2.5 lg:py-3 bg-emerald-500 hover:bg-emerald-400 text-white font-black text-xs lg:text-base rounded-xl shadow-md transition-all border-b-4 border-emerald-700 active:border-b-0 active:translate-y-[4px]"
                                   >
-                                    تأكيد ومتابعة (بدون حماية)
+                                    تأكيد
                                   </button>
-                                  {canProtectImmediately && (
-                                    <button
-                                      onClick={() => {
-                                        if (winner === 1) {
-                                          setCards1((prev: any) => ({
-                                            ...prev,
-                                            protect: prev.protect - 1,
-                                          }));
-                                        } else {
-                                          setCards2((prev: any) => ({
-                                            ...prev,
-                                            protect: prev.protect - 1,
-                                          }));
-                                        }
-                                        setProtectedCountries((prev: any) => ({
-                                          ...prev,
-                                          [selectedCountry.id]: true,
-                                        }));
-                                        handleCapture(winner!);
-                                      }}
-                                      className="w-full py-2.5 lg:py-3 bg-teal-600 hover:bg-teal-500 text-white font-black text-xs lg:text-base rounded-xl shadow-md transition-all border-b-4 border-teal-800 active:border-b-0 active:translate-y-[4px]"
-                                    >
-                                      تأكيد ومتابعة + تفعيل حماية فورية (بطاقة)
-                                    </button>
-                                  )}
                                 </div>
                               </>
                             );
@@ -345,9 +351,9 @@ export default function QuestionModal({
                                 </p>
                                 <button
                                   onClick={handleMiss}
-                                  className="w-full py-2.5 lg:py-3 bg-slate-500 hover:bg-slate-400 text-white font-black text-xs lg:text-base rounded-xl shadow-md transition-all border-b-4 border-slate-700 active:border-b-0 active:translate-y-[4px]"
+                                  className="w-full py-2.5 lg:py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-xs lg:text-base rounded-xl shadow-md transition-all border-b-4 border-yellow-700 active:border-b-0 active:translate-y-[4px]"
                                 >
-                                  تأكيد وتطبيق العقوبة
+                                  تأكيد
                                 </button>
                               </>
                             );
@@ -377,13 +383,20 @@ export default function QuestionModal({
                     )}
 
                   <div className="flex flex-col items-center justify-center pt-2">
-                    {!isTimerRunning && timer === 20 ? (
-                      <button
-                        onClick={() => setIsTimerRunning(true)}
-                        className="py-2 lg:py-3 px-6 lg:px-8 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-xs lg:text-base rounded-xl shadow-md inline-flex items-center gap-2 border-b-4 border-amber-700 active:border-b-0 active:translate-y-[4px] transition-all"
-                      >
-                        <Play size={16} /> بدء المؤقت (للجمهور)
-                      </button>
+                    {!isTimerRunning ? (
+                      <div className="flex flex-col items-center gap-2">
+                        {timer < 20 && (
+                          <div className="text-center font-black text-3xl lg:text-5xl text-amber-500 font-mono tracking-widest">
+                            {timer}
+                          </div>
+                        )}
+                        <button
+                          onClick={() => setIsTimerRunning(true)}
+                          className="py-2 lg:py-3 px-6 lg:px-8 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-xs lg:text-base rounded-xl shadow-md inline-flex items-center gap-2 border-b-4 border-amber-700 active:border-b-0 active:translate-y-[4px] transition-all"
+                        >
+                          <Play size={16} /> بدء المؤقت
+                        </button>
+                      </div>
                     ) : (
                       <div className="text-center font-black text-3xl lg:text-5xl text-amber-500 font-mono tracking-widest">
                         {timer}
@@ -413,41 +426,8 @@ export default function QuestionModal({
                             }}
                             className="py-1.5 lg:py-2 px-2 flex-1 bg-emerald-500 text-white rounded-lg text-[9px] lg:text-xs font-black"
                           >
-                            تأكيد ومتابعة
+                            تأكيد
                           </button>
-                          {(forcedWinner === 1
-                            ? cards1.protect
-                            : cards2.protect) > 0 &&
-                            !protectedCountries[selectedCountry.id] && (
-                              <button
-                                onClick={() => {
-                                  if (selectedCountry.isChallenge) {
-                                    if (forcedWinner === 1)
-                                      setChallengesUsed1((p: number) => p + 1);
-                                    else
-                                      setChallengesUsed2((p: number) => p + 1);
-                                  }
-                                  if (forcedWinner === 1)
-                                    setCards1((p: any) => ({
-                                      ...p,
-                                      protect: p.protect - 1,
-                                    }));
-                                  else
-                                    setCards2((p: any) => ({
-                                      ...p,
-                                      protect: p.protect - 1,
-                                    }));
-                                  setProtectedCountries((p: any) => ({
-                                    ...p,
-                                    [selectedCountry.id]: true,
-                                  }));
-                                  handleCapture(forcedWinner, true);
-                                }}
-                                className="py-1.5 lg:py-2 px-2 flex-1 bg-teal-600 text-white rounded-lg text-[9px] lg:text-xs font-black"
-                              >
-                                تأكيد + حماية فورية
-                              </button>
-                            )}
                           <button
                             onClick={() => setForcedWinner(null)}
                             className="py-1.5 lg:py-2 px-4 flex-none bg-slate-300 dark:bg-slate-700 text-slate-800 dark:text-white rounded-lg text-[9px] lg:text-xs font-black mt-1 sm:mt-0"
@@ -457,30 +437,34 @@ export default function QuestionModal({
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="flex justify-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-2 lg:p-3 rounded-2xl border border-slate-200 dark:border-slate-700">
                         <button
                           onClick={handleRefereeChangeQuestion}
-                          className="col-span-1 sm:col-span-2 py-2 lg:py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-[10px] lg:text-xs font-bold transition-colors"
+                          title="تغيير السؤال/التحدي"
+                          className="p-3 bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-all shadow-sm border border-slate-200 dark:border-slate-600 hover:scale-105 active:scale-95"
                         >
-                          تغيير السؤال/التحدي
+                          <RefreshCw size={20} />
                         </button>
                         <button
                           onClick={handleManualFree}
-                          className="col-span-1 sm:col-span-2 py-2 lg:py-2.5 bg-rose-50 hover:bg-rose-100 dark:bg-slate-800 dark:hover:bg-rose-900/30 text-rose-600 rounded-lg text-[10px] lg:text-xs font-bold transition-colors"
+                          title="سحب وجعلها حرة"
+                          className="p-3 bg-white hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-rose-500 rounded-xl transition-all shadow-sm border border-slate-200 dark:border-slate-600 hover:scale-105 active:scale-95"
                         >
-                          سحب وجعلها حرة
+                          <Unlock size={20} />
                         </button>
                         <button
                           onClick={() => setForcedWinner(1)}
-                          className="py-2 lg:py-2.5 bg-cyan-100 hover:bg-cyan-200 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 rounded-lg text-[10px] lg:text-xs font-bold transition-colors"
+                          title={`إجبار فوز ${team1Name}`}
+                          className="p-3 bg-white hover:bg-cyan-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-cyan-600 rounded-xl transition-all shadow-sm border border-slate-200 dark:border-slate-600 hover:scale-105 active:scale-95"
                         >
-                          إجبار فوز {team1Name}
+                          <Flag size={20} />
                         </button>
                         <button
                           onClick={() => setForcedWinner(2)}
-                          className="py-2 lg:py-2.5 bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-lg text-[10px] lg:text-xs font-bold transition-colors"
+                          title={`إجبار فوز ${team2Name}`}
+                          className="p-3 bg-white hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-rose-600 rounded-xl transition-all shadow-sm border border-slate-200 dark:border-slate-600 hover:scale-105 active:scale-95"
                         >
-                          إجبار فوز {team2Name}
+                          <Flag size={20} />
                         </button>
                       </div>
                     )}
@@ -514,39 +498,8 @@ export default function QuestionModal({
                         }}
                         className="py-1.5 lg:py-2 px-2 flex-1 bg-emerald-500 text-white rounded-lg text-[9px] lg:text-xs font-black"
                       >
-                        تأكيد ومتابعة
+                        تأكيد
                       </button>
-                      {(forcedWinner === 1 ? cards1.protect : cards2.protect) >
-                        0 &&
-                        !protectedCountries[selectedCountry.id] && (
-                          <button
-                            onClick={() => {
-                              if (selectedCountry.isChallenge) {
-                                if (forcedWinner === 1)
-                                  setChallengesUsed1((p: number) => p + 1);
-                                else setChallengesUsed2((p: number) => p + 1);
-                              }
-                              if (forcedWinner === 1)
-                                setCards1((p: any) => ({
-                                  ...p,
-                                  protect: p.protect - 1,
-                                }));
-                              else
-                                setCards2((p: any) => ({
-                                  ...p,
-                                  protect: p.protect - 1,
-                                }));
-                              setProtectedCountries((p: any) => ({
-                                ...p,
-                                [selectedCountry.id]: true,
-                              }));
-                              handleCapture(forcedWinner, true);
-                            }}
-                            className="py-1.5 lg:py-2 px-2 flex-1 bg-teal-600 text-white rounded-lg text-[9px] lg:text-xs font-black"
-                          >
-                            تأكيد + حماية فورية
-                          </button>
-                        )}
                       <button
                         onClick={() => setForcedWinner(null)}
                         className="py-1.5 lg:py-2 px-4 flex-none bg-slate-300 dark:bg-slate-700 text-slate-800 dark:text-white rounded-lg text-[9px] lg:text-xs font-black mt-1 sm:mt-0"
@@ -581,8 +534,8 @@ export default function QuestionModal({
             </div>
           )
         ) : (
-          <div className="py-4 lg:py-8 text-center space-y-3 lg:space-y-5">
-            <p className="font-bold text-base lg:text-xl dark:text-white mb-4 lg:mb-6">
+          <div className="py-3 lg:py-5 text-center space-y-2 lg:space-y-3">
+            <p className="font-bold text-sm lg:text-lg dark:text-white mb-2 lg:mb-3">
               مملوكة لـ {selectedCountry.owner === 1 ? team1Name : team2Name}
             </p>
 
@@ -597,68 +550,94 @@ export default function QuestionModal({
               // فصلنا شرط الهجوم العادي عن العاصمة عشان ما يتصادمون
               const canBeAttacked = !isChallengeOwned && !selectedCountry.isStolen;
 
+              const hasAnyAction = selectedCountry.owner !== turn && (
+                (canBeAttacked && !isProtected && !isOpponentCapital) ||
+                (!isProtected && isOpponentCapital) ||
+                (canBeAttacked && !isOpponentCapital)
+              );
+
+              const hasOwnAction = selectedCountry.owner === turn && !protectedCountries[selectedCountry.id];
+
               return (
                 <>
-                  {/* 1. زر الاستحلال العادي (للدول العادية فقط) */}
-                  {selectedCountry.owner !== turn &&
-                    canBeAttacked &&
-                    !isProtected &&
-                    !isOpponentCapital && (
-                      <button
-                        onClick={useCaptureCard}
-                        className="px-4 py-3 lg:px-6 lg:py-5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl lg:rounded-2xl font-black shadow-md w-full flex items-center justify-center gap-2 border-b-4 border-purple-800 active:border-b-0 active:translate-y-[4px] transition-all text-xs lg:text-lg"
-                      >
-                        <TankIcon size={18} /> بدء الاستحلال الأبدي
-                      </button>
-                    )}
+                  {/* شريط أزرار الهجوم */}
+                  {(hasAnyAction || hasOwnAction) && (
+                    <div className="flex justify-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-3 lg:p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+                      {/* زر الاستحلال الأبدي */}
+                      {selectedCountry.owner !== turn &&
+                        canBeAttacked &&
+                        !isProtected &&
+                        !isOpponentCapital && (
+                          <button
+                            onClick={useCaptureCard}
+                            title="بدء الاستحلال الأبدي"
+                            className="p-3 lg:p-4 bg-purple-600 hover:bg-purple-500 text-white rounded-xl transition-all shadow-sm border border-purple-700 hover:scale-105 active:scale-95"
+                          >
+                            <TankIcon size={22} />
+                          </button>
+                        )}
 
-                  {/* 2. زر غزو العاصمة (مفصول بشروطه الخاصة عشان يظهر دائماً) */}
-                  {selectedCountry.owner !== turn &&
-                    !isProtected &&
-                    isOpponentCapital && (
-                      <button
-                        onClick={useCaptureCard}
-                        className="px-4 py-3 lg:px-6 lg:py-5 bg-slate-800 hover:bg-slate-700 text-yellow-400 rounded-xl lg:rounded-2xl font-black shadow-md w-full flex items-center justify-center gap-2 border-b-4 border-slate-950 active:border-b-0 active:translate-y-[4px] transition-all text-xs lg:text-lg mt-2"
-                      >
-                        <Crown size={18} /> غزو العاصمة
-                      </button>
-                    )}
+                      {/* زر غزو العاصمة */}
+                      {selectedCountry.owner !== turn &&
+                        !isProtected &&
+                        isOpponentCapital && (
+                          <button
+                            onClick={useCaptureCard}
+                            title="غزو العاصمة"
+                            className="p-3 lg:p-4 bg-slate-800 hover:bg-slate-700 text-yellow-400 rounded-xl transition-all shadow-sm border border-slate-600 hover:scale-105 active:scale-95"
+                          >
+                            <Crown size={22} />
+                          </button>
+                        )}
 
-                  {/* 3. زر القصف المدمر (للدول العادية فقط) */}
-                  {selectedCountry.owner !== turn &&
-                    canBeAttacked &&
-                    !isOpponentCapital && (
-                      <button
-                        onClick={useAirStrike}
-                        className="px-4 py-3 lg:px-6 lg:py-5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl lg:rounded-2xl font-black shadow-md w-full flex items-center justify-center gap-2 border-b-4 border-rose-800 active:border-b-0 active:translate-y-[4px] transition-all text-xs lg:text-lg mt-3"
-                      >
-                        <Rocket size={18} /> قصف مدمر (- نصف الدولة)
-                      </button>
-                    )}
+                      {/* زر القصف المدمر */}
+                      {selectedCountry.owner !== turn &&
+                        canBeAttacked &&
+                        !isOpponentCapital && (
+                          <button
+                            onClick={useAirStrike}
+                            title="قصف مدمر (- نصف الدولة)"
+                            className="p-3 lg:p-4 bg-rose-600 hover:bg-rose-500 text-white rounded-xl transition-all shadow-sm border border-rose-700 hover:scale-105 active:scale-95"
+                          >
+                            <Rocket size={22} />
+                          </button>
+                        )}
 
-                  {/* 4. رسالة الحماية ضد الدبابات */}
+                      {/* زر تفعيل الحماية */}
+                      {selectedCountry.owner === turn &&
+                        !protectedCountries[selectedCountry.id] && (
+                          <button
+                            onClick={useProtectCard}
+                            title="تفعيل بطاقة الحماية (درع دائم)"
+                            className="p-3 lg:p-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all shadow-sm border border-emerald-700 hover:scale-105 active:scale-95"
+                          >
+                            <Shield size={22} />
+                          </button>
+                        )}
+                    </div>
+                  )}
+
+                  {/* رسائل الحماية والتحذيرات */}
                   {isProtected &&
                     selectedCountry.owner !== turn &&
                     !isOpponentCapital && (
-                      <div className="px-4 py-3 lg:px-6 lg:py-5 bg-slate-100 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 rounded-xl lg:rounded-2xl font-black shadow-inner w-full flex items-center justify-center gap-2 text-xs lg:text-base text-center mt-2">
+                      <div className="px-3 py-2 lg:px-4 lg:py-3 bg-slate-100 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 rounded-xl font-bold shadow-inner w-full flex items-center justify-center gap-2 text-[10px] lg:text-sm text-center mt-2">
                         <Shield size={18} className="shrink-0" /> الدولة محمية بشكل كامل ضد
                         الاستحلال المباشر بالدبابة
                       </div>
                     )}
 
-                  {/* 5. رسالة حماية العاصمة */}
                   {isProtected &&
                     selectedCountry.owner !== turn &&
                     isOpponentCapital && (
-                      <div className="px-4 py-3 lg:px-6 lg:py-5 bg-slate-100 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 rounded-xl lg:rounded-2xl font-black shadow-inner w-full flex items-center justify-center gap-2 text-xs lg:text-base text-center mt-2">
+                      <div className="px-3 py-2 lg:px-4 lg:py-3 bg-slate-100 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 rounded-xl font-bold shadow-inner w-full flex items-center justify-center gap-2 text-[10px] lg:text-sm text-center mt-2">
                         <Shield size={18} className="shrink-0" /> العاصمة محمية بالدرع ولا
                         يمكن غزوها حالياً
                       </div>
                     )}
 
-                  {/* 6. رسائل دول التحدي والدول المستحلة */}
                   {isChallengeOwned && selectedCountry.owner !== turn && (
-                    <div className="px-4 py-3 lg:px-6 lg:py-5 bg-slate-100 dark:bg-slate-800 text-purple-600 dark:text-purple-400 rounded-xl lg:rounded-2xl font-black shadow-inner w-full flex items-center justify-center gap-2 text-xs lg:text-base text-center mt-2">
+                      <div className="px-3 py-2 lg:px-4 lg:py-3 bg-slate-100 dark:bg-slate-800 text-purple-600 dark:text-purple-400 rounded-xl font-bold shadow-inner w-full flex items-center justify-center gap-2 text-[10px] lg:text-sm text-center mt-2">
                       <Star size={18} className="shrink-0" /> دولة التحدي غير قابلة للاستحلال
                       أو القصف
                     </div>
@@ -667,7 +646,7 @@ export default function QuestionModal({
                   {selectedCountry.isStolen &&
                     selectedCountry.owner !== turn &&
                     !isOpponentCapital && (
-                      <div className="px-4 py-3 lg:px-6 lg:py-5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl lg:rounded-2xl font-black shadow-inner w-full flex items-center justify-center gap-2 text-xs lg:text-base text-center mt-2">
+                      <div className="px-3 py-2 lg:px-4 lg:py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-bold shadow-inner w-full flex items-center justify-center gap-2 text-[10px] lg:text-sm text-center mt-2">
                         <Swords size={18} className="shrink-0" /> الدولة مستحلة أبدياً بالبطاقة
                         ولا يمكن الهجوم عليها
                       </div>
@@ -676,17 +655,7 @@ export default function QuestionModal({
               );
             })()}
 
-            {selectedCountry.owner === turn &&
-              !protectedCountries[selectedCountry.id] && (
-                <button
-                  onClick={useProtectCard}
-                  className="px-4 py-3 lg:px-6 lg:py-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl lg:rounded-2xl font-black shadow-md w-full flex items-center justify-center gap-2 border-b-4 border-emerald-800 active:border-b-0 active:translate-y-[4px] transition-all text-xs lg:text-lg"
-                >
-                  <Shield size={18} /> تفعيل بطاقة الحماية (درع دائم)
-                </button>
-              )}
-
-            <div className="pt-4 lg:pt-6 mt-3 lg:mt-4 border-t border-slate-200 dark:border-slate-800">
+            <div className="pt-3 lg:pt-4 mt-2 lg:mt-3 border-t border-slate-200 dark:border-slate-800">
               <p className="text-[9px] lg:text-xs font-black text-slate-400 mb-2 lg:mb-3 text-right">
                 أدوات الحكم (إدارة الطوارئ):
               </p>
@@ -707,46 +676,8 @@ export default function QuestionModal({
                       }}
                       className="py-1.5 lg:py-2.5 px-2 flex-1 bg-emerald-500 text-white rounded-lg text-[9px] lg:text-xs font-black"
                     >
-                      تأكيد ومتابعة
+                      تأكيد
                     </button>
-                    {(() => {
-                      const protectCards =
-                        forcedWinner === 1 ? cards1.protect : cards2.protect;
-                      if (
-                        protectCards === 0 ||
-                        protectedCountries[selectedCountry.id]
-                      )
-                        return null;
-                      return (
-                        <button
-                          onClick={() => {
-                            if (selectedCountry.isChallenge) {
-                              if (forcedWinner === 1)
-                                setChallengesUsed1((p: number) => p + 1);
-                              else setChallengesUsed2((p: number) => p + 1);
-                            }
-                            if (forcedWinner === 1)
-                              setCards1((p: any) => ({
-                                ...p,
-                                protect: p.protect - 1,
-                              }));
-                            else
-                              setCards2((p: any) => ({
-                                ...p,
-                                protect: p.protect - 1,
-                              }));
-                            setProtectedCountries((p: any) => ({
-                              ...p,
-                              [selectedCountry.id]: true,
-                            }));
-                            handleCapture(forcedWinner, true);
-                          }}
-                          className="py-1.5 lg:py-2.5 px-2 flex-1 bg-teal-600 text-white rounded-lg text-[9px] lg:text-xs font-black"
-                        >
-                          تأكيد + حماية
-                        </button>
-                      );
-                    })()}
                     <button
                       onClick={() => setForcedWinner(null)}
                       className="py-1.5 lg:py-2.5 px-4 flex-none bg-slate-300 dark:bg-slate-700 text-slate-800 dark:text-white rounded-lg text-[9px] lg:text-xs font-black mt-1 sm:mt-0"
@@ -756,28 +687,27 @@ export default function QuestionModal({
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="flex justify-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-2 lg:p-3 rounded-2xl border border-slate-200 dark:border-slate-700">
                   <button
                     onClick={handleManualFree}
-                    className="col-span-1 sm:col-span-2 py-2 lg:py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-[10px] lg:text-xs font-bold transition-colors"
+                    title="سحب وجعلها حرة"
+                    className="p-3 bg-white hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-rose-500 rounded-xl transition-all shadow-sm border border-slate-200 dark:border-slate-600 hover:scale-105 active:scale-95"
                   >
-                    سحب وجعلها حرة
+                    <Unlock size={20} />
                   </button>
                   <button
-                    onClick={() => {
-                      setForcedWinner(1);
-                    }}
-                    className="py-2 lg:py-2.5 bg-cyan-100 hover:bg-cyan-200 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 rounded-lg text-[10px] lg:text-xs font-bold transition-colors"
+                    onClick={() => setForcedWinner(1)}
+                    title={`إجبار فوز ${team1Name}`}
+                    className="p-3 bg-white hover:bg-cyan-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-cyan-600 rounded-xl transition-all shadow-sm border border-slate-200 dark:border-slate-600 hover:scale-105 active:scale-95"
                   >
-                    إجبار فوز {team1Name}
+                    <Flag size={20} />
                   </button>
                   <button
-                    onClick={() => {
-                      setForcedWinner(2);
-                    }}
-                    className="py-2 lg:py-2.5 bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-lg text-[10px] lg:text-xs font-bold transition-colors"
+                    onClick={() => setForcedWinner(2)}
+                    title={`إجبار فوز ${team2Name}`}
+                    className="p-3 bg-white hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-rose-600 rounded-xl transition-all shadow-sm border border-slate-200 dark:border-slate-600 hover:scale-105 active:scale-95"
                   >
-                    إجبار فوز {team2Name}
+                    <Flag size={20} />
                   </button>
                 </div>
               )}

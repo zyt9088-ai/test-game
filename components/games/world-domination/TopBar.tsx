@@ -13,6 +13,7 @@ interface TopBarProps {
   roomCode: string | null;
   handleGoHome: () => void;
   handleGoBack: () => void;
+  handleForceEndGame?: () => void;
   showAlert: (msg: string) => void;
   setShowAudienceModal: (val: boolean) => void;
 }
@@ -27,6 +28,7 @@ export default function TopBar({
   roomCode,
   handleGoHome,
   handleGoBack,
+  handleForceEndGame,
   showAlert,
   setShowAudienceModal,
 }: TopBarProps) {
@@ -39,12 +41,15 @@ export default function TopBar({
         >
           الرئيسية
         </button>
-        <button
-          onClick={handleGoBack}
-          className="px-3 py-1.5 lg:px-4 lg:py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-xl flex items-center gap-1.5 lg:gap-2 font-black text-[10px] lg:text-xs border-b-4 border-slate-800 active:border-b-0 active:translate-y-[4px] transition-all"
-        >
-          <ArrowRight size={14} className="lg:w-4 lg:h-4" /> رجوع
-        </button>
+
+        {gameState === "playing" && handleForceEndGame && (
+          <button
+            onClick={handleForceEndGame}
+            className="px-3 py-1.5 lg:px-4 lg:py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl flex items-center gap-1.5 lg:gap-2 font-black text-[10px] lg:text-xs border-b-4 border-purple-800 active:border-b-0 active:translate-y-[4px] transition-all ml-2"
+          >
+            إنهاء اللعبة
+          </button>
+        )}
       </div>
 
       {gameState === "playing" && (
