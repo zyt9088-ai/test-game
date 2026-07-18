@@ -8,7 +8,7 @@ export function useCWCombat() {
   const [revealed1, setRevealed1] = useState<boolean[]>(Array(ROOMS_COUNT).fill(false));
   const [revealed2, setRevealed2] = useState<boolean[]>(Array(ROOMS_COUNT).fill(false));
   const [resultMsg, setResultMsg] = useState("");
-  const [resultType, setResultType] = useState<"hit" | "miss" | "trap" | "commander" | "idle" | "spy">("idle");
+  const [resultType, setResultType] = useState<"hit" | "miss" | "trap" | "commander" | "idle" | "spy" | "team1Win" | "team2Win" | "draw">("idle");
   const [spyUsed1, setSpyUsed1] = useState(false);
   const [spyUsed2, setSpyUsed2] = useState(false);
   const [spiedTarget1, setSpiedTarget1] = useState<number | null>(null);
