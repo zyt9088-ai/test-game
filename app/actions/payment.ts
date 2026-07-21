@@ -31,48 +31,23 @@ async function fetchPaymentStatus(paymentId: string, moyasarSecret: string) {
   return await res.json();
 }
 
-// دالة مساعدة لترجمة أسباب فشل الدفع إلى اللغة العربية بشكل دقيق لكل حالة
+// دالة مساعدة لترجمة أسباب فشل الدفع إلى رسائل عربية واضحة ومطمئنة للعميل
 function translateMoyasarError(status: string, rawMessage?: string): string {
   const msg = (rawMessage || "").toLowerCase();
 
-  // 1. إلغاء عملية التحقق (Authentication Cancelled)
   if (msg.includes("cancel")) {
-    return "تم إلغاء عملية التحقق من الدفع.";
-  }
-
-  // 2. غير متوفر (Authentication Not Available)
-  if (msg.includes("unavailable") || msg.includes("not available") || msg.includes("not_available")) {
-    return "خدمة التوثيق (3DS) غير متوفرة لهذه البطاقة.";
-  }
-
-  // 3. رفض التوثيق من البنك (Authentication Rejected)
-  if (msg.includes("reject")) {
-    return "تم رفض طلب التوثيق من البنك المصدر للبطاقة.";
-  }
-
-  // 4. خطأ خادم التوثيق (Authentication Server Error)
-  if (msg.includes("server") || msg.includes("error")) {
-    return "حدث خطأ في خادم التوثيق التابع للبنك (ACS Server Error).";
-  }
-
-  // 5. رفض الحساب / رفض العملية (Not Authenticated / Transaction Denied / Declined)
-  if (msg.includes("denied") || msg.includes("not authenticated") || msg.includes("not verified")) {
-    return "تم رفض المعاملة: الحساب غير موثق أو رفض البنك المعاملة.";
-  }
-
-  if (msg.includes("declined")) {
-    return "تم رفض عملية التوثيق من قِبَل البنك المصدر للبطاقة.";
+    return "تم إلغاء عملية الدفع. لم يتم خصم أي مبلغ من حسابك.";
   }
 
   if (msg.includes("insufficient")) {
-    return "الرصيد المتوفر في البطاقة غير كافٍ لإتمام العملية.";
+    return "الرصيد غير كافٍ لإتمام العملية. يرجى التأكد من رصيد البطاقة والمحاولة مرة أخرى.";
   }
 
   if (msg.includes("expired")) {
-    return "بطاقة الدفع المستخدمة منتهية الصلاحية.";
+    return "البطاقة المستخدمة منتهية الصلاحية. يرجى استخدام بطاقة أخرى.";
   }
 
-  return rawMessage ? `فشلت عملية الدفع: ${rawMessage}` : "فشلت عملية الدفع، يرجى التأكد من بيانات البطاقة والمحاولة مرة أخرى.";
+  return "لم تتم عملية الدفع. إذا تم خصم مبلغ من حسابك، سيتم إرجاعه تلقائياً خلال أيام. يرجى المحاولة مرة أخرى.";
 }
 
 export async function verifyAndFulfillPayment(paymentId: string, pkgId: number) {

@@ -78,7 +78,7 @@ function PaymentCallbackContent() {
         <h1 className={`text-3xl font-black mb-3 ${
           result?.success ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"
         }`}>
-          {result?.success ? "تم الدفع بنجاح! 🎉" : "فشلت عملية الدفع"}
+          {result?.success ? "تم الدفع بنجاح! 🎉" : "لم تتم عملية الدفع"}
         </h1>
         
         <p className="text-slate-600 dark:text-slate-400 font-bold text-lg mb-8">
