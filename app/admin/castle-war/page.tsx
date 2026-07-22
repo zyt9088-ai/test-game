@@ -37,7 +37,7 @@ export default function CastleWarAdmin() {
       )}
 
       <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col h-[calc(100vh-2rem)] md:h-[calc(100vh-3rem)]">
-        <CastleWarHeader />
+        <CastleWarHeader exportCSV={ctx.exportCSV} importCSV={ctx.importCSV} />
 
         <section className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-3 md:p-6 shadow-sm flex flex-col min-h-0 transition-colors duration-500 overflow-hidden">
           <div className="flex flex-col h-full animate-in fade-in min-h-0">

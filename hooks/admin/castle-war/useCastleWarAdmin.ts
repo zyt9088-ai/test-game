@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { CWQuestion } from "@/types";
+import { exportToCSV, parseCSV } from "@/lib/csvHelper";
 
 export function useCastleWarAdmin() {
   const supabase = getSupabaseBrowser();
@@ -227,6 +228,33 @@ export function useCastleWarAdmin() {
     e.target.value = "";
   };
 
+  const [editingGenIdx, setEditingGenIdx] = useState<number | null>(null);
+
+  const startEditingCwGen = (idx: number) => {
+    const item = cwGenDB[idx];
+    if (!item) return;
+    setEditingGenIdx(idx);
+    setNewCwGenQuestion(item.q || "");
+    if (item.options && item.options.length >= 3) {
+      setGenOpt1(item.options[0]);
+      setGenOpt2(item.options[1]);
+      setGenOpt3(item.options[2]);
+      let c = 1;
+      if (item.a === item.options[1]) c = 2;
+      if (item.a === item.options[2]) c = 3;
+      setCorrectGenOpt(c);
+    }
+  };
+
+  const cancelEditingCwGen = () => {
+    setEditingGenIdx(null);
+    setNewCwGenQuestion("");
+    setGenOpt1("");
+    setGenOpt2("");
+    setGenOpt3("");
+    setCorrectGenOpt(1);
+  };
+
   const addManualCwGenQA = () => {
     if (!newCwGenQuestion.trim() || !genOpt1.trim() || !genOpt2.trim() || !genOpt3.trim()) {
       showToast("الرجاء إدخال السؤال والخيارات الثلاثة كاملة!", "error");
@@ -234,16 +262,93 @@ export function useCastleWarAdmin() {
     }
     const options = [genOpt1.trim(), genOpt2.trim(), genOpt3.trim()];
     const answer = options[correctGenOpt - 1];
-    const newQA = { q: newCwGenQuestion.trim(), options, a: answer };
+    const newQA = { q: newCwGenQuestion.trim(), options, a: answer, dbId: editingGenIdx !== null ? cwGenDB[editingGenIdx]?.dbId : undefined };
 
-    saveCwGenData([...cwGenDB, newQA]);
-    showToast("تمت إضافة السؤال بنجاح!");
+    if (editingGenIdx !== null) {
+      const updated = [...cwGenDB];
+      updated[editingGenIdx] = newQA;
+      saveCwGenData(updated);
+      setEditingGenIdx(null);
+      showToast("تم تحديث السؤال بنجاح!");
+    } else {
+      saveCwGenData([...cwGenDB, newQA]);
+      showToast("تمت إضافة السؤال بنجاح!");
+    }
 
     setNewCwGenQuestion("");
     setGenOpt1("");
     setGenOpt2("");
     setGenOpt3("");
     setCorrectGenOpt(1);
+  };
+
+  const exportCSV = () => {
+    const headers = ["النوع", "السؤال", "الخيار الأول", "الخيار الثاني", "الخيار الثالث", "الإجابة الصحيحة"];
+    const rows: string[][] = [];
+
+    cw30SecDB.forEach((q) => rows.push(["30sec", q, "", "", "", ""]));
+    cw5SecDB.forEach((q) => rows.push(["5sec", q, "", "", "", ""]));
+    cwTeamDB.forEach((q) => rows.push(["team", q, "", "", "", ""]));
+    cwGenDB.forEach((q) => rows.push([
+      "general",
+      q.q || "",
+      q.options?.[0] || "",
+      q.options?.[1] || "",
+      q.options?.[2] || "",
+      q.a || ""
+    ]));
+
+    exportToCSV("اسئلة_حرب_القلاع", headers, rows);
+    showToast("تم تصدير ملف CSV بنجاح!");
+  };
+
+  const importCSV = async (file: File) => {
+    try {
+      const text = await file.text();
+      const data = parseCSV(text);
+      if (data.length <= 1) {
+        showToast("الملف فارغ أو صيغته غير صحيحة!", "error");
+        return;
+      }
+
+      const rows = data.slice(1);
+      const inserts: any[] = [];
+
+      for (const row of rows) {
+        if (row.length < 2) continue;
+        const [type, question, opt1, opt2, opt3, answer] = row;
+        if (!question) continue;
+
+        const category = (type || "30sec").trim();
+        const options = [opt1 || "", opt2 || "", opt3 || ""].filter(Boolean);
+
+        inserts.push({
+          category: category,
+          question: question.trim(),
+          options: options,
+          answer: answer || ""
+        });
+      }
+
+      if (inserts.length > 0) {
+        const { error } = await supabase.from("cw_questions").insert(inserts);
+        if (error) throw error;
+        showToast(`تم استيراد ${inserts.length} سؤال بنجاح!`);
+        
+        const { data: questions } = await supabase.from("cw_questions").select("*");
+        if (questions) {
+          setCw30SecDB(questions.filter(q => q.category === '30sec').map(q => q.question));
+          setCw5SecDB(questions.filter(q => q.category === '5sec').map(q => q.question));
+          setCwTeamDB(questions.filter(q => q.category === 'team').map(q => q.question));
+          setCwGenDB(questions.filter(q => q.category === 'general').map(q => ({
+            q: q.question, a: q.answer, options: q.options || [], dbId: q.id
+          })));
+        }
+      }
+    } catch (e: any) {
+      console.error("Error importing CSV:", e);
+      showToast("حدث خطأ أثناء استيراد الملف!", "error");
+    }
   };
 
   return {
@@ -255,6 +360,7 @@ export function useCastleWarAdmin() {
     genOpt1, setGenOpt1, genOpt2, setGenOpt2, genOpt3, setGenOpt3, correctGenOpt, setCorrectGenOpt,
     toast, showToast,
     saveCw30Data, saveCw5Data, saveCwTeamData, saveCwGenData,
-    exportToJsonFile, handleJsonImport, handleExcelUpload, handleCwGenFileUpload, addManualCwGenQA
+    exportToJsonFile, handleJsonImport, handleExcelUpload, handleCwGenFileUpload, addManualCwGenQA,
+    exportCSV, importCSV, editingGenIdx, startEditingCwGen, cancelEditingCwGen
   };
 }

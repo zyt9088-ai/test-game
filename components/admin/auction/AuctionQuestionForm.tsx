@@ -147,6 +147,30 @@ export default function AuctionQuestionForm({ ctx }: { ctx: any }) {
               ))}
             </div>
           </div>
+
+          <div className="flex flex-col gap-2 md:col-span-2">
+            <label className="font-bold text-sm text-slate-500 dark:text-slate-400">مستوى صعوبة السؤال</label>
+            <div className="flex flex-col sm:flex-row gap-3">
+              {(["سهل", "متوسط", "صعب"] as const).map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, difficulty: level })}
+                  className={`flex-1 py-3 px-4 rounded-xl font-black text-sm border-2 transition-all shadow-sm ${
+                    formData.difficulty === level
+                      ? level === "سهل"
+                        ? "bg-emerald-500 border-emerald-600 text-white ring-2 ring-emerald-500/30 scale-[1.02]"
+                        : level === "متوسط"
+                        ? "bg-amber-500 border-amber-600 text-white ring-2 ring-amber-500/30 scale-[1.02]"
+                        : "bg-rose-500 border-rose-600 text-white ring-2 ring-rose-500/30 scale-[1.02]"
+                      : "bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-400 hover:border-slate-300"
+                  }`}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="flex gap-4 pt-4 border-t-2 border-slate-100 dark:border-slate-800">
@@ -164,7 +188,7 @@ export default function AuctionQuestionForm({ ctx }: { ctx: any }) {
               type="button"
               onClick={() => {
                 setEditingId(null);
-                setFormData({ category: formData.category, question: "", opt1: "", opt2: "", opt3: "", correctOption: 1 });
+                setFormData({ category: formData.category, question: "", opt1: "", opt2: "", opt3: "", correctOption: 1, difficulty: "متوسط" });
               }}
               className="px-6 py-4 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-black text-lg rounded-xl border-b-4 border-slate-300 dark:border-slate-950 active:border-b-0 active:translate-y-[4px] transition-all"
             >

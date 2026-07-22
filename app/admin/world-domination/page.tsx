@@ -12,6 +12,8 @@ import WorldDominationTabs from "@/components/admin/world-domination/WorldDomina
 import WorldDominationMapTab from "@/components/admin/world-domination/WorldDominationMapTab";
 import WorldDominationChallengesTab from "@/components/admin/world-domination/WorldDominationChallengesTab";
 
+import GamingLoadingScreen from "@/components/admin/layout/GamingLoadingScreen";
+
 const cairo = Cairo({ subsets: ["arabic"], weight: ["400", "700", "900"] });
 
 export default function WorldDominationAdmin() {
@@ -19,10 +21,10 @@ export default function WorldDominationAdmin() {
 
   if (ctx.isLoading) {
     return (
-      <div className={`min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-black text-2xl ${cairo.className}`} dir="rtl">
-        <Globe className="w-20 h-20 text-blue-500 animate-spin-slow mb-4" />
-        <p className="animate-pulse">جاري الاتصال بمركز القيادة...</p>
-      </div>
+      <GamingLoadingScreen
+        title="جاري تجهيز خريطة التحدي ومصانع التحكم..."
+        subtitle="يتم تحميل أسئلة الدول والتحديات المسجلة بالسيرفر..."
+      />
     );
   }
 
@@ -34,7 +36,7 @@ export default function WorldDominationAdmin() {
       <ParticleBackground />
 
       <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col">
-        <WorldDominationHeader />
+        <WorldDominationHeader exportCSV={ctx.exportCSV} importCSV={ctx.importCSV} />
 
         <section className="flex-1 bg-transparent flex flex-col transition-colors duration-500">
           <WorldDominationTabs wdActiveSubTab={ctx.wdActiveSubTab} setWdActiveSubTab={ctx.setWdActiveSubTab} />

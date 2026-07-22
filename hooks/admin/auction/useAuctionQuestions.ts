@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { exportToCSV, parseCSV } from "@/lib/csvHelper";
 
 export interface AuctionQuestion {
   id: string;
@@ -9,6 +10,7 @@ export interface AuctionQuestion {
   question: string;
   options: string[];
   answer: string;
+  difficulty?: "سهل" | "متوسط" | "صعب";
 }
 
 export function useAuctionQuestions() {
@@ -20,7 +22,7 @@ export function useAuctionQuestions() {
 
   const defaultCategories = ["تاريخ", "دين", "رياضة", "علوم", "جغرافيا"];
   const uniqueCategories = Array.from(new Set([...defaultCategories, ...questions.map(q => q.category)]));
-  
+
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCategory, setNewCategory] = useState("");
@@ -28,9 +30,9 @@ export function useAuctionQuestions() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<{
-    category: string; question: string; opt1: string; opt2: string; opt3: string; correctOption: 1 | 2 | 3;
+    category: string; question: string; opt1: string; opt2: string; opt3: string; correctOption: 1 | 2 | 3; difficulty: "سهل" | "متوسط" | "صعب";
   }>({
-    category: "", question: "", opt1: "", opt2: "", opt3: "", correctOption: 1,
+    category: "", question: "", opt1: "", opt2: "", opt3: "", correctOption: 1, difficulty: "متوسط"
   });
 
   useEffect(() => {
@@ -54,7 +56,8 @@ export function useAuctionQuestions() {
           category: q.category || "عام",
           question: q.question,
           options: q.options || [],
-          answer: q.answer
+          answer: q.answer,
+          difficulty: q.difficulty || "متوسط"
         })));
       }
       setIsLoading(false);
@@ -67,20 +70,17 @@ export function useAuctionQuestions() {
     setIsSaving(true);
     setQuestions(updatedQuestions);
 
-    // للمزامنة، نحدد المضاف والمحذوف
-    // للسهولة، سنقوم بحذف كل شيء وإعادة إدراجه إن كان العدد قليلاً أو استخدام upsert
-    // وبما أن لدينا IDs يمكننا التحديث، لكن الأفضل هو تنفيذ الإدراج/التحديث عبر loop
-    
     for (const q of updatedQuestions) {
       await supabase.from("aw_questions").upsert({
         id: q.id.includes('-') ? q.id : undefined, // إذا كان UUID صحيح نرسله
         category: q.category,
         question: q.question,
         options: q.options,
-        answer: q.answer
+        answer: q.answer,
+        difficulty: q.difficulty || "متوسط"
       });
     }
-    
+
     // إعادة جلب الأسئلة للحصول على الـ IDs الصحيحة إذا كانت جديدة
     const { data } = await supabase.from("aw_questions").select("*");
     if (data) {
@@ -89,7 +89,8 @@ export function useAuctionQuestions() {
         category: q.category || "عام",
         question: q.question,
         options: q.options || [],
-        answer: q.answer
+        answer: q.answer,
+        difficulty: q.difficulty || "متوسط"
       })));
     }
 
@@ -103,10 +104,10 @@ export function useAuctionQuestions() {
       return;
     }
 
-    const answerString = 
-      formData.correctOption === 1 ? formData.opt1 : 
-      formData.correctOption === 2 ? formData.opt2 : 
-      formData.opt3;
+    const answerString =
+      formData.correctOption === 1 ? formData.opt1 :
+        formData.correctOption === 2 ? formData.opt2 :
+          formData.opt3;
 
     const newQuestion: AuctionQuestion = {
       id: editingId || Math.random().toString(36).substr(2, 9),
@@ -114,6 +115,7 @@ export function useAuctionQuestions() {
       question: formData.question,
       options: [formData.opt1, formData.opt2, formData.opt3],
       answer: answerString,
+      difficulty: formData.difficulty || "متوسط"
     };
 
     let updatedQs = [];
@@ -126,9 +128,36 @@ export function useAuctionQuestions() {
 
     setFormData({
       category: formData.category,
-      question: "", opt1: "", opt2: "", opt3: "", correctOption: 1,
+      question: "", opt1: "", opt2: "", opt3: "", correctOption: 1, difficulty: "متوسط"
     });
     await handleSaveDB(updatedQs);
+    toast.success("تم حفظ السؤال بنجاح");
+  };
+
+  const updateQuestionDifficulty = async (id: string, difficulty: "سهل" | "متوسط" | "صعب") => {
+    const updatedQs = questions.map((q) => (q.id === id ? { ...q, difficulty } : q));
+    await handleSaveDB(updatedQs);
+    toast.success("تم تحديث مستوى صعوبة السؤال");
+  };
+
+  const updateQuestionAnswer = async (id: string, answer: string) => {
+    if (!id || !answer) return;
+
+    setQuestions((prev) =>
+      prev.map((q) => (q.id === id ? { ...q, answer } : q))
+    );
+
+    const { error } = await supabase
+      .from("aw_questions")
+      .update({ answer })
+      .eq("id", id);
+
+    if (error) {
+      toast.error("تعذر تحديث الإجابة: " + error.message);
+      return;
+    }
+
+    toast.success("تم تحديد الإجابة الصحيحة بنجاح");
   };
 
   const handleEdit = (q: AuctionQuestion) => {
@@ -141,6 +170,7 @@ export function useAuctionQuestions() {
       category: q.category, question: q.question,
       opt1: q.options[0] || "", opt2: q.options[1] || "", opt3: q.options[2] || "",
       correctOption: correctOpt,
+      difficulty: q.difficulty || "متوسط"
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -152,12 +182,73 @@ export function useAuctionQuestions() {
     }
   };
 
+  const exportCSV = () => {
+    const headers = ["الفئة", "السؤال", "الخيار الأول", "الخيار الثاني", "الخيار الثالث", "الإجابة الصحيحة", "الصعوبة"];
+    const rows = questions.map((q) => [
+      q.category || "عام",
+      q.question || "",
+      q.options[0] || "",
+      q.options[1] || "",
+      q.options[2] || "",
+      q.answer || "",
+      q.difficulty || "متوسط"
+    ]);
+
+    exportToCSV("اسئلة_حرب_المزايدات", headers, rows);
+    toast.success("تم تصدير ملف CSV بنجاح!");
+  };
+
+  const importCSV = async (file: File) => {
+    try {
+      const text = await file.text();
+      const data = parseCSV(text);
+      if (data.length <= 1) {
+        toast.error("الملف فارغ أو صيغته غير صحيحة!");
+        return;
+      }
+
+      const rows = data.slice(1);
+      const newQs: AuctionQuestion[] = [];
+
+      for (const row of rows) {
+        if (row.length < 2) continue;
+        const [category, question, opt1, opt2, opt3, answer, difficulty] = row;
+        if (!question) continue;
+
+        const options = [opt1 || "", opt2 || "", opt3 || ""].filter(Boolean);
+        const correctAnswer = answer || options[0] || "";
+
+        newQs.push({
+          id: Math.random().toString(36).substr(2, 9),
+          category: (category || "عام").trim(),
+          question: question.trim(),
+          options: options.length > 0 ? options : [correctAnswer],
+          answer: correctAnswer,
+          difficulty: (difficulty === "سهل" || difficulty === "صعب") ? difficulty : "متوسط"
+        });
+      }
+
+      const updatedQs = [...questions, ...newQs];
+      await handleSaveDB(updatedQs);
+      toast.success(`تم استيراد ${newQs.length} سؤال بنجاح!`);
+    } catch (e: any) {
+      console.error("Error importing CSV:", e);
+      toast.error("حدث خطأ أثناء استيراد الملف!");
+    }
+  };
+
+  const setCategoryForNewQuestion = (category: string) => {
+    setFormData((prev) => ({ ...prev, category }));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return {
     questions, isLoading, isSaving, uniqueCategories,
     isCategoryDropdownOpen, setIsCategoryDropdownOpen,
     isAddingCategory, setIsAddingCategory,
     newCategory, setNewCategory, categoryRef,
     editingId, setEditingId, formData, setFormData,
-    handleSubmit, handleEdit, handleDelete
+    handleSubmit, handleEdit, handleDelete, updateQuestionDifficulty, updateQuestionAnswer,
+    exportCSV, importCSV, setCategoryForNewQuestion
   };
 }

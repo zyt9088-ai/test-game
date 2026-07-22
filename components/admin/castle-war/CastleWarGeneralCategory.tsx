@@ -1,13 +1,14 @@
 "use client";
 import React from "react";
-import { Download, Upload, UploadCloud, Check } from "lucide-react";
+import { Download, Upload, UploadCloud, Check, Edit } from "lucide-react";
 
 export default function CastleWarGeneralCategory({ ctx }: { ctx: any }) {
   const {
     cwActiveSubTab, cwGenDB, selectedCwGen, setSelectedCwGen,
     newCwGenQuestion, setNewCwGenQuestion, genOpt1, setGenOpt1,
     genOpt2, setGenOpt2, genOpt3, setGenOpt3, correctGenOpt, setCorrectGenOpt,
-    addManualCwGenQA, exportToJsonFile, handleJsonImport, saveCwGenData, handleCwGenFileUpload, showToast
+    addManualCwGenQA, exportToJsonFile, handleJsonImport, saveCwGenData, handleCwGenFileUpload, showToast,
+    editingGenIdx, startEditingCwGen, cancelEditingCwGen
   } = ctx;
 
   if (cwActiveSubTab !== "general") return null;
@@ -40,7 +41,15 @@ export default function CastleWarGeneralCategory({ ctx }: { ctx: any }) {
               ))}
             </div>
             <div className="flex gap-2 flex-wrap justify-end">
-              <button onClick={addManualCwGenQA} className="flex-1 min-w-[80px] bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 px-4 rounded-lg text-xs shadow-sm">إضافة</button>
+              <button onClick={addManualCwGenQA} className="flex-1 min-w-[80px] bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 px-4 rounded-lg text-xs shadow-sm flex items-center justify-center gap-1">
+                {editingGenIdx !== null && editingGenIdx !== undefined ? <Edit size={14} /> : null}
+                <span>{editingGenIdx !== null && editingGenIdx !== undefined ? "حفظ التعديل" : "إضافة"}</span>
+              </button>
+              {editingGenIdx !== null && editingGenIdx !== undefined && (
+                <button onClick={cancelEditingCwGen} className="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold py-2.5 px-3 rounded-lg text-xs">
+                  إلغاء
+                </button>
+              )}
               <button onClick={() => exportToJsonFile(cwGenDB, "castle_war_general")} className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 px-3 rounded-lg cursor-pointer shadow-sm flex items-center justify-center" title="تصدير JSON"><Download size={16} /></button>
               <label className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 px-3 rounded-lg cursor-pointer shadow-sm flex items-center justify-center" title="استيراد JSON">
                 <Upload size={16} />
@@ -90,29 +99,43 @@ export default function CastleWarGeneralCategory({ ctx }: { ctx: any }) {
             return (
               <div
                 key={idx}
-                onClick={() => setSelectedCwGen((prev: number[]) => prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx])}
-                className={`cursor-pointer border p-4 rounded-2xl flex items-start gap-4 shadow-sm transition-all ${isSelected ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500/50" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700"}`}
+                className={`border p-4 rounded-2xl flex items-start justify-between gap-4 shadow-sm transition-all ${isSelected ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500/50" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700"}`}
               >
-                <div className={`w-5 h-5 rounded shrink-0 flex items-center justify-center border mt-1 transition-colors ${isSelected ? "bg-emerald-600 border-emerald-600" : "border-slate-300 dark:border-slate-500"}`}>
-                  {isSelected && <Check size={14} className="text-white" strokeWidth={3} />}
+                <div className="flex items-start gap-4 flex-1" onClick={() => setSelectedCwGen((prev: number[]) => prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx])}>
+                  <div className={`w-5 h-5 rounded shrink-0 flex items-center justify-center border mt-1 transition-colors ${isSelected ? "bg-emerald-600 border-emerald-600" : "border-slate-300 dark:border-slate-500"}`}>
+                    {isSelected && <Check size={14} className="text-white" strokeWidth={3} />}
+                  </div>
+                  <span className="font-black text-slate-400 text-sm mt-1">{idx + 1}-</span>
+                  <div className="flex flex-col gap-2 w-full">
+                    <span className="font-black text-slate-900 dark:text-white text-sm leading-relaxed">{item.q}</span>
+                    {item.options ? (
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {item.options.map((opt: string, oIdx: number) => (
+                          <span key={oIdx} className={`text-[10px] px-3 py-1.5 rounded-lg font-bold border ${opt === item.a ? "bg-emerald-500 border-emerald-500 text-white shadow-sm" : "bg-slate-100 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-400"}`}>
+                            {opt}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="font-black text-emerald-600 dark:text-emerald-400 text-xs bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg w-fit">
+                        الجواب: {item.a}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span className="font-black text-slate-400 text-sm mt-1">{idx + 1}-</span>
-                <div className="flex flex-col gap-2 w-full">
-                  <span className="font-black text-slate-900 dark:text-white text-sm leading-relaxed">{item.q}</span>
-                  {item.options ? (
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {item.options.map((opt: string, oIdx: number) => (
-                        <span key={oIdx} className={`text-[10px] px-3 py-1.5 rounded-lg font-bold border ${opt === item.a ? "bg-emerald-500 border-emerald-500 text-white shadow-sm" : "bg-slate-100 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-400"}`}>
-                          {opt}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="font-black text-emerald-600 dark:text-emerald-400 text-xs bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg w-fit">
-                      الجواب: {item.a}
-                    </span>
-                  )}
-                </div>
+
+                {startEditingCwGen && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startEditingCwGen(idx);
+                    }}
+                    className="p-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-colors shrink-0"
+                    title="تعديل السؤال"
+                  >
+                    <Edit size={16} />
+                  </button>
+                )}
               </div>
             );
           })

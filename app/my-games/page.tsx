@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { fetchUserGamesAction, fetchUserProfileAction } from "@/app/actions/gameAccess";
-import { 
-  Gamepad2, Swords, Globe, Gavel, ArrowRight, Home, Info, 
+import {
+  Gamepad2, Swords, Globe, Gavel, ArrowRight, Home, Info,
   MessageCircle, ChevronDown, User, Sun, Moon, LogOut, Zap
 } from "lucide-react";
 import Link from "next/link";
@@ -35,7 +35,7 @@ export default function MyGamesPage() {
     const loadData = async () => {
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
-        
+
         if (error || !user) {
           setLoading(false);
           return;
@@ -114,7 +114,7 @@ export default function MyGamesPage() {
 
   return (
     <div className={`${tajawal.className} min-h-screen bg-slate-50 dark:bg-[#0f172a] transition-colors duration-300 flex flex-col`} dir="rtl">
-      
+
       {/* الهيدر الأسطوري */}
       <div className="fixed top-4 left-0 right-0 z-[60] w-full max-w-7xl mx-auto px-2 md:px-4">
         <div className="bg-white/95 dark:bg-slate-800/95 rounded-2xl border-4 border-slate-900 dark:border-black p-2 md:p-3 shadow-[6px_6px_0px_#0f172a] dark:shadow-[6px_6px_0px_#000] flex justify-between items-center transition-colors duration-300">
@@ -140,7 +140,7 @@ export default function MyGamesPage() {
           <div className="flex gap-1.5 md:gap-2 pr-1 md:pr-2 items-center">
             {userSession && profile ? (
               <div className="relative z-[70]">
-                <button 
+                <button
                   onClick={() => setIsAvatarDropdownOpen(!isAvatarDropdownOpen)}
                   className="flex items-center gap-1.5 md:gap-2 p-1 pr-2 md:pr-3 bg-slate-100 dark:bg-slate-900 rounded-xl md:rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 transition-colors"
                 >
@@ -218,26 +218,25 @@ export default function MyGamesPage() {
             <span>رجوع</span>
             <ArrowRight size={26} strokeWidth={3} />
           </Link>
-        
+
           <div className="bg-white dark:bg-slate-800 rounded-[2rem] border-4 border-slate-900 dark:border-black p-6 md:p-10 shadow-[8px_8px_0px_#000]">
             <h1 className="text-2xl md:text-3xl font-black mb-4 flex items-center gap-3">
               <Gamepad2 className="text-purple-500 w-8 h-8" /> مكتبة ألعابي
             </h1>
 
-            <div className="flex flex-col md:flex-row gap-4 mb-8">
-              <div className="flex-1 bg-indigo-50 dark:bg-indigo-900/30 border-2 border-indigo-200 dark:border-indigo-800 p-4 rounded-2xl flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Zap className="text-indigo-500 w-8 h-8" />
-                  <div>
-                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400">رصيد الألعاب المتاح</p>
-                    <p className="text-2xl font-black text-indigo-700 dark:text-indigo-300">{availableTokens} لعبة</p>
-                  </div>
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
+              <div className="flex-1 bg-indigo-50 dark:bg-indigo-900/30 border-2 border-indigo-200 dark:border-indigo-800 p-4 rounded-2xl flex items-center gap-3">
+                <Zap className="text-indigo-500 w-8 h-8" />
+                <div>
+                  <p className="text-sm font-bold text-slate-500 dark:text-slate-400">رصيد الألعاب المتاح</p>
+                  <p className="text-2xl font-black text-indigo-700 dark:text-indigo-300">{availableTokens} لعبة</p>
                 </div>
-                <Link href="/packages" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-xl text-sm transition-colors">
-                  شراء باقة
-                </Link>
               </div>
             </div>
+
+            <Link href="/packages" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-xl text-sm transition-colors inline-block mb-8">
+              شراء باقة
+            </Link>
 
             {userGames.reduce((acc, game) => acc + (game.games_played || 0), 0) === 0 && (
               <div className="bg-emerald-50 dark:bg-emerald-900/30 border-2 border-emerald-200 dark:border-emerald-800 p-4 rounded-2xl flex items-center gap-3 mb-6 animate-in fade-in slide-in-from-top-4">
@@ -254,9 +253,9 @@ export default function MyGamesPage() {
             )}
 
             <p className="text-base font-bold text-slate-500 dark:text-slate-400 mb-6">
-              هنا قائمة بألعابك وإحصائيات لعبك لها:
+              إحصائيات اللعب:
             </p>
-            
+
             <div className="flex flex-col gap-4">
               {gamesList.map(game => {
                 const userGame = userGames.find(ug => ug.game_id === game.id);

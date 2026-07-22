@@ -1,11 +1,27 @@
 "use client";
-import React from "react";
+import React, { useRef } from "react";
 import Link from "next/link";
-import { ArrowRight, Swords } from "lucide-react";
+import { ArrowRight, Swords, Download, Upload } from "lucide-react";
 
-export default function CastleWarHeader() {
+export default function CastleWarHeader({
+  exportCSV,
+  importCSV
+}: {
+  exportCSV?: () => void;
+  importCSV?: (file: File) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && importCSV) {
+      importCSV(file);
+      e.target.value = "";
+    }
+  };
+
   return (
-    <header className="shrink-0 flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-4 md:p-5 shadow-sm mb-4 transition-colors duration-500">
+    <header className="shrink-0 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-4 md:p-5 shadow-sm mb-4 transition-colors duration-500 gap-4">
       <div className="flex items-center gap-4">
         <Link
           href="/admin"
@@ -25,11 +41,33 @@ export default function CastleWarHeader() {
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-emerald-200 dark:border-emerald-800/50 transition-colors duration-500">
-        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]"></div>
-        <span className="text-[10px] md:text-xs font-bold text-emerald-700 dark:text-emerald-400 transition-colors duration-500 hidden sm:inline">
-          متصل بقاعدة البيانات
-        </span>
+
+      <div className="flex items-center gap-3 w-full sm:w-auto">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        {importCSV && (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm transition-all shadow-sm active:scale-95"
+          >
+            <Upload size={16} className="text-rose-500" />
+            <span>استيراد CSV</span>
+          </button>
+        )}
+        {exportCSV && (
+          <button
+            onClick={exportCSV}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm transition-all shadow-sm active:scale-95"
+          >
+            <Download size={16} />
+            <span>تصدير CSV</span>
+          </button>
+        )}
       </div>
     </header>
   );
